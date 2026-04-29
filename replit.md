@@ -28,6 +28,12 @@ App mobile (Expo / React Native) em português brasileiro para controlar entrada
   - Multi-round (até 4 rodadas de ferramenta por mensagem).
   - Botão de microfone (ditado em pt-BR): Web Speech API no navegador, expo-speech-recognition no celular (requer dev build/APK; em Expo Go o botão fica oculto).
 - Configurações com chave OpenRouter, escolha do modelo (sugestões: gpt-4o-mini padrão, gemini-2.0-flash, claude-3.5-haiku, deepseek-chat, gpt-4o), e reset de dados.
+- **Veículos** (4ª aba): cadastro de veículos (nome, placa, combustível, ícone, cor) com dashboard por veículo:
+  - KM/L médio (segmentos cheio→cheio ou reserva→reserva), R$ por km, próxima troca de óleo.
+  - Abastecimento: 3 campos inteligentes (valor, litros, R$/L) — preenche 2 e o terceiro é calculado.
+  - Estado do tanque (cheio / reserva) usado para detectar segmentos válidos de consumo.
+  - Troca de óleo: km atual + intervalo (3k/5k/7,5k/10k atalhos) → próxima troca calculada.
+  - Toggle "Gerar gasto vinculado" cria/atualiza/exclui automaticamente uma transação em Transporte.
 
 ## Estrutura
 
@@ -36,12 +42,17 @@ artifacts/mobile/
   app/
     _layout.tsx                  Stack root + providers + ChatSheet overlay
     (tabs)/
-      _layout.tsx                Tabs (Início, Histórico, Fixos) + ChatFAB
+      _layout.tsx                Tabs (Início, Histórico, Fixos, Veículos) + ChatFAB
       index.tsx                  Dashboard
       history.tsx                Lista filtrada agrupada por dia
       recurring.tsx              Lista de recorrências com switch ativo
+      vehicles.tsx               Lista de veículos com KPIs por card
     transaction/{new,[id]}.tsx   Formulário de transação (modal)
     recurring/{new,[id]}.tsx     Formulário de recorrência (modal)
+    vehicle/new.tsx              Formulário de veículo (modal, ?id= edita)
+    vehicle/[id].tsx             Detalhes/dashboard do veículo + histórico
+    fueling/[id].tsx             Form abastecimento (id="new" + ?vehicleId=, edita)
+    oilchange/[id].tsx           Form troca de óleo (id="new" + ?vehicleId=, edita)
     settings.tsx                 Configurações (chave + modelo)
     categories.tsx               Gerenciamento de categorias
   components/                    UI atomica (AmountInput, IconCircle,
@@ -58,6 +69,7 @@ artifacts/mobile/
     types.ts | format.ts | categories.ts | storage.ts | secureStorage.ts
     openrouter.ts                Cliente OpenRouter (chat completions)
     aiTools.ts                   Definições de tools + handlers + system prompt
+    vehicleStats.ts              Cálculo KM/L, R$/km, status próxima troca
   constants/colors.ts            Paleta dark
   hooks/useColors.ts
 ```
@@ -76,6 +88,18 @@ artifacts/mobile/
 - `expo-secure-store@~15.0.8` (pinado à versão do SDK 54)
 - `expo-speech-recognition`
 - `date-fns`
+- `expo-updates` (~29.0.17) — habilita atualizações OTA via canal `preview`
+- `babel-preset-expo` — necessário para `eas update` rodar `expo export` localmente
+
+## Atualizações OTA
+
+Sempre que mudar SÓ código JS (telas, lógica, prompt), publicar com:
+
+```bash
+EAS_NO_VCS=1 npx eas-cli@latest update --channel preview --message "descrição"
+```
+
+O app instalado baixa a atualização na próxima abertura. Mudanças nativas (deps com código nativo, permissões, ícone, splash) ainda exigem APK novo.
 
 ## Build (gerar APK com EAS)
 

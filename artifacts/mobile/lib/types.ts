@@ -57,3 +57,44 @@ export type ToolCall = {
     arguments: string;
   };
 };
+
+export type FuelType = "gasolina" | "etanol" | "diesel" | "gnv" | "flex";
+
+export type Vehicle = {
+  id: string;
+  name: string;
+  plate?: string;
+  fuelType: FuelType;
+  color?: string;
+  icon?: string;
+  initialOdometer?: number;
+  createdAt: string;
+};
+
+export type TankStatus = "full" | "reserve";
+
+export type Fueling = {
+  id: string;
+  vehicleId: string;
+  date: string;
+  odometer: number;
+  liters: number;
+  pricePerLiter: number;
+  totalCost: number;
+  tankStatus: TankStatus;
+  notes?: string;
+  expenseTransactionId?: string;
+  createdAt: string;
+};
+
+export type OilChange = {
+  id: string;
+  vehicleId: string;
+  date: string;
+  odometer: number;
+  nextChangeKm: number;
+  cost?: number;
+  notes?: string;
+  expenseTransactionId?: string;
+  createdAt: string;
+};

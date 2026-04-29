@@ -3,13 +3,24 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { DEFAULT_CATEGORIES } from "@/lib/categories";
 import { genId, todayIso } from "@/lib/format";
 import { loadJson, saveJson, STORAGE_KEYS } from "@/lib/storage";
-import type { Category, Recurring, Transaction, TransactionType } from "@/lib/types";
+import type {
+  Category,
+  Fueling,
+  OilChange,
+  Recurring,
+  Transaction,
+  TransactionType,
+  Vehicle,
+} from "@/lib/types";
 
 type AppDataContextValue = {
   ready: boolean;
   transactions: Transaction[];
   recurring: Recurring[];
   categories: Category[];
+  vehicles: Vehicle[];
+  fuelings: Fueling[];
+  oilChanges: OilChange[];
   addTransaction: (input: Omit<Transaction, "id" | "createdAt">) => Promise<Transaction>;
   addTransactionRaw: (tx: Transaction) => Promise<void>;
   updateTransaction: (id: string, patch: Partial<Transaction>) => Promise<void>;
@@ -20,6 +31,15 @@ type AppDataContextValue = {
   removeRecurring: (id: string) => Promise<void>;
   addCategory: (input: Omit<Category, "id">) => Promise<Category>;
   removeCategory: (id: string) => Promise<void>;
+  addVehicle: (input: Omit<Vehicle, "id" | "createdAt">) => Promise<Vehicle>;
+  updateVehicle: (id: string, patch: Partial<Vehicle>) => Promise<void>;
+  removeVehicle: (id: string) => Promise<void>;
+  addFueling: (input: Omit<Fueling, "id" | "createdAt">) => Promise<Fueling>;
+  updateFueling: (id: string, patch: Partial<Fueling>) => Promise<void>;
+  removeFueling: (id: string) => Promise<void>;
+  addOilChange: (input: Omit<OilChange, "id" | "createdAt">) => Promise<OilChange>;
+  updateOilChange: (id: string, patch: Partial<OilChange>) => Promise<void>;
+  removeOilChange: (id: string) => Promise<void>;
   resetAll: () => Promise<void>;
 };
 
@@ -30,20 +50,29 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [recurring, setRecurring] = useState<Recurring[]>([]);
   const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [fuelings, setFuelings] = useState<Fueling[]>([]);
+  const [oilChanges, setOilChanges] = useState<OilChange[]>([]);
 
   // Load
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [tx, rc, cats] = await Promise.all([
+      const [tx, rc, cats, veh, fue, oil] = await Promise.all([
         loadJson<Transaction[]>(STORAGE_KEYS.transactions, []),
         loadJson<Recurring[]>(STORAGE_KEYS.recurring, []),
         loadJson<Category[]>(STORAGE_KEYS.categories, DEFAULT_CATEGORIES),
+        loadJson<Vehicle[]>(STORAGE_KEYS.vehicles, []),
+        loadJson<Fueling[]>(STORAGE_KEYS.fuelings, []),
+        loadJson<OilChange[]>(STORAGE_KEYS.oilChanges, []),
       ]);
       if (cancelled) return;
       setTransactions(tx);
       setRecurring(rc);
       setCategories(cats.length ? cats : DEFAULT_CATEGORIES);
+      setVehicles(veh);
+      setFuelings(fue);
+      setOilChanges(oil);
       setReady(true);
     })();
     return () => {
@@ -191,14 +220,108 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const addVehicle = useCallback(async (input: Omit<Vehicle, "id" | "createdAt">) => {
+    const v: Vehicle = { ...input, id: "veh_" + genId(), createdAt: new Date().toISOString() };
+    setVehicles((prev) => {
+      const next = [v, ...prev];
+      void saveJson(STORAGE_KEYS.vehicles, next);
+      return next;
+    });
+    return v;
+  }, []);
+
+  const updateVehicle = useCallback(async (id: string, patch: Partial<Vehicle>) => {
+    setVehicles((prev) => {
+      const next = prev.map((v) => (v.id === id ? { ...v, ...patch } : v));
+      void saveJson(STORAGE_KEYS.vehicles, next);
+      return next;
+    });
+  }, []);
+
+  const removeVehicle = useCallback(async (id: string) => {
+    setVehicles((prev) => {
+      const next = prev.filter((v) => v.id !== id);
+      void saveJson(STORAGE_KEYS.vehicles, next);
+      return next;
+    });
+    setFuelings((prev) => {
+      const next = prev.filter((f) => f.vehicleId !== id);
+      void saveJson(STORAGE_KEYS.fuelings, next);
+      return next;
+    });
+    setOilChanges((prev) => {
+      const next = prev.filter((o) => o.vehicleId !== id);
+      void saveJson(STORAGE_KEYS.oilChanges, next);
+      return next;
+    });
+  }, []);
+
+  const addFueling = useCallback(async (input: Omit<Fueling, "id" | "createdAt">) => {
+    const f: Fueling = { ...input, id: "fue_" + genId(), createdAt: new Date().toISOString() };
+    setFuelings((prev) => {
+      const next = [f, ...prev];
+      void saveJson(STORAGE_KEYS.fuelings, next);
+      return next;
+    });
+    return f;
+  }, []);
+
+  const updateFueling = useCallback(async (id: string, patch: Partial<Fueling>) => {
+    setFuelings((prev) => {
+      const next = prev.map((f) => (f.id === id ? { ...f, ...patch } : f));
+      void saveJson(STORAGE_KEYS.fuelings, next);
+      return next;
+    });
+  }, []);
+
+  const removeFueling = useCallback(async (id: string) => {
+    setFuelings((prev) => {
+      const next = prev.filter((f) => f.id !== id);
+      void saveJson(STORAGE_KEYS.fuelings, next);
+      return next;
+    });
+  }, []);
+
+  const addOilChange = useCallback(async (input: Omit<OilChange, "id" | "createdAt">) => {
+    const o: OilChange = { ...input, id: "oil_" + genId(), createdAt: new Date().toISOString() };
+    setOilChanges((prev) => {
+      const next = [o, ...prev];
+      void saveJson(STORAGE_KEYS.oilChanges, next);
+      return next;
+    });
+    return o;
+  }, []);
+
+  const updateOilChange = useCallback(async (id: string, patch: Partial<OilChange>) => {
+    setOilChanges((prev) => {
+      const next = prev.map((o) => (o.id === id ? { ...o, ...patch } : o));
+      void saveJson(STORAGE_KEYS.oilChanges, next);
+      return next;
+    });
+  }, []);
+
+  const removeOilChange = useCallback(async (id: string) => {
+    setOilChanges((prev) => {
+      const next = prev.filter((o) => o.id !== id);
+      void saveJson(STORAGE_KEYS.oilChanges, next);
+      return next;
+    });
+  }, []);
+
   const resetAll = useCallback(async () => {
     setTransactions([]);
     setRecurring([]);
     setCategories(DEFAULT_CATEGORIES);
+    setVehicles([]);
+    setFuelings([]);
+    setOilChanges([]);
     await Promise.all([
       saveJson(STORAGE_KEYS.transactions, []),
       saveJson(STORAGE_KEYS.recurring, []),
       saveJson(STORAGE_KEYS.categories, DEFAULT_CATEGORIES),
+      saveJson(STORAGE_KEYS.vehicles, []),
+      saveJson(STORAGE_KEYS.fuelings, []),
+      saveJson(STORAGE_KEYS.oilChanges, []),
     ]);
   }, []);
 
@@ -211,6 +334,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       transactions,
       recurring,
       categories,
+      vehicles,
+      fuelings,
+      oilChanges,
       addTransaction,
       addTransactionRaw,
       updateTransaction,
@@ -221,6 +347,15 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       removeRecurring,
       addCategory,
       removeCategory,
+      addVehicle,
+      updateVehicle,
+      removeVehicle,
+      addFueling,
+      updateFueling,
+      removeFueling,
+      addOilChange,
+      updateOilChange,
+      removeOilChange,
       resetAll,
     }),
     [
@@ -228,6 +363,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       transactions,
       recurring,
       categories,
+      vehicles,
+      fuelings,
+      oilChanges,
       addTransaction,
       addTransactionRaw,
       updateTransaction,
@@ -238,6 +376,15 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       removeRecurring,
       addCategory,
       removeCategory,
+      addVehicle,
+      updateVehicle,
+      removeVehicle,
+      addFueling,
+      updateFueling,
+      removeFueling,
+      addOilChange,
+      updateOilChange,
+      removeOilChange,
       resetAll,
     ],
   );

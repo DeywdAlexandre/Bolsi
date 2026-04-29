@@ -67,6 +67,22 @@ function RootLayoutNav() {
       />
       <Stack.Screen name="settings" options={{ title: "Configurações" }} />
       <Stack.Screen name="categories" options={{ title: "Categorias" }} />
+      <Stack.Screen
+        name="vehicle/new"
+        options={{ presentation: "modal", title: "Novo veículo" }}
+      />
+      <Stack.Screen
+        name="vehicle/[id]"
+        options={{ title: "Veículo" }}
+      />
+      <Stack.Screen
+        name="fueling/[id]"
+        options={{ presentation: "modal", title: "Abastecimento" }}
+      />
+      <Stack.Screen
+        name="oilchange/[id]"
+        options={{ presentation: "modal", title: "Troca de óleo" }}
+      />
     </Stack>
   );
 }

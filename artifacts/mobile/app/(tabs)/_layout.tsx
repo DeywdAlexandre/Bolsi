@@ -57,6 +57,15 @@ export default function TabLayout() {
             ),
           }}
         />
+        <Tabs.Screen
+          name="vehicles"
+          options={{
+            title: "Veículos",
+            tabBarIcon: ({ color, focused }) => (
+              <TabIcon name="truck" color={color} focused={focused} />
+            ),
+          }}
+        />
       </Tabs>
       <ChatFAB />
     </View>
