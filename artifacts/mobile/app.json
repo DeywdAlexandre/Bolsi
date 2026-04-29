@@ -1,7 +1,8 @@
 {
   "expo": {
     "name": "Bolso",
-    "slug": "mobile",
+    "slug": "bolso",
+    "owner": "deywd",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -15,14 +16,21 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.bolso.app"
+      "bundleIdentifier": "com.bolso.app",
+      "infoPlist": {
+        "NSSpeechRecognitionUsageDescription": "Permita o reconhecimento de voz para transcrever suas mensagens.",
+        "NSMicrophoneUsageDescription": "Permita o microfone para ditar mensagens ao assistente."
+      }
     },
     "android": {
       "package": "com.bolso.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#0a0a0c"
-      }
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/images/icon.png"
@@ -47,6 +55,11 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "3f0aa034-693f-47af-8fc1-8125fd5dc423"
+      }
     }
   }
 }
