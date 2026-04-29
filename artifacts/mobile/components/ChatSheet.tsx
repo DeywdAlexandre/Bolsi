@@ -18,6 +18,7 @@ import { router } from "expo-router";
 import { useChat } from "@/contexts/ChatContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useColors } from "@/hooks/useColors";
+import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import type { ChatMessage } from "@/lib/types";
 
 export function ChatSheet() {
@@ -27,6 +28,20 @@ export function ChatSheet() {
   const { apiKey } = useSettings();
   const [draft, setDraft] = useState("");
   const inputRef = useRef<TextInput>(null);
+  const baseDraftRef = useRef("");
+  const speech = useSpeechRecognition("pt-BR");
+
+  const toggleMic = useCallback(() => {
+    if (speech.listening) {
+      speech.stop();
+      return;
+    }
+    baseDraftRef.current = draft ? draft.trimEnd() + " " : "";
+    speech.start((text, isFinal) => {
+      setDraft(baseDraftRef.current + text);
+      if (isFinal) baseDraftRef.current = baseDraftRef.current + text + " ";
+    });
+  }, [draft, speech]);
 
   const visibleMessages = useMemo(
     () =>
@@ -149,13 +164,39 @@ export function ChatSheet() {
                 ref={inputRef}
                 value={draft}
                 onChangeText={setDraft}
-                placeholder="Pergunte ou registre um gasto..."
+                placeholder={
+                  speech.listening ? "Ouvindo..." : "Pergunte ou registre um gasto..."
+                }
                 placeholderTextColor={colors.mutedForeground}
                 style={[styles.input, { color: colors.foreground }]}
                 multiline
                 maxLength={1000}
                 editable={!sending}
               />
+              {speech.supported ? (
+                <Pressable
+                  onPress={toggleMic}
+                  disabled={sending}
+                  style={({ pressed }) => [
+                    styles.micBtn,
+                    {
+                      backgroundColor: speech.listening ? colors.expense : "transparent",
+                      opacity: pressed ? 0.7 : 1,
+                    },
+                  ]}
+                  hitSlop={6}
+                >
+                  <Feather
+                    name={speech.listening ? "square" : "mic"}
+                    size={18}
+                    color={
+                      speech.listening
+                        ? colors.primaryForeground
+                        : colors.mutedForeground
+                    }
+                  />
+                </Pressable>
+              ) : null}
               <Pressable
                 onPress={handleSend}
                 disabled={!draft.trim() || sending}
@@ -174,6 +215,11 @@ export function ChatSheet() {
                 />
               </Pressable>
             </View>
+            {speech.error ? (
+              <Text style={[styles.micError, { color: colors.expense }]}>
+                {speech.error}
+              </Text>
+            ) : null}
           </View>
         </KeyboardAvoidingView>
       </View>
@@ -434,5 +480,18 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
+  },
+  micBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  micError: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    marginTop: 6,
+    marginLeft: 4,
   },
 });

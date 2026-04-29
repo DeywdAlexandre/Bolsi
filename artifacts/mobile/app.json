@@ -28,7 +28,14 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Permita o microfone para ditar mensagens ao assistente.",
+          "speechRecognitionPermission": "Permita o reconhecimento de voz para transcrever suas mensagens."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

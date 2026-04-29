@@ -22,6 +22,7 @@ App mobile (Expo / React Native) em português brasileiro para controlar entrada
   - Chat livre (qualquer assunto)
   - Tool calling para `add_transaction`, `list_transactions`, `get_summary`, `get_categories`, `add_recurring`, `delete_transaction`.
   - Multi-round (até 4 rodadas de ferramenta por mensagem).
+  - Botão de microfone (ditado em pt-BR): Web Speech API no navegador, expo-speech-recognition no celular (requer dev build/APK; em Expo Go o botão fica oculto).
 - Configurações com chave OpenRouter, escolha do modelo (sugestões: gpt-4o-mini padrão, gemini-2.0-flash, claude-3.5-haiku, deepseek-chat, gpt-4o), e reset de dados.
 
 ## Estrutura
