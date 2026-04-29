@@ -15,7 +15,11 @@ App mobile (Expo / React Native) em português brasileiro para controlar entrada
 - Dashboard organizado por período (mês ou ano), com seletor visual e picker de mês/ano.
 - Cartões de saldo, entradas e gastos.
 - Quebra por categoria com barras proporcionais.
-- Histórico completo com filtros por tipo e categoria, agrupado por dia.
+- Histórico completo (estilo extrato) com:
+  - Seletor de período: Mês, Ano ou intervalo de datas (DD/MM – DD/MM) com calendário e atalhos (Hoje, 7 dias, 30 dias, Mês atual).
+  - Filtros por tipo (Tudo / Gastos / Entradas) e por categoria.
+  - Barra de totais (Entradas / Gastos / Saldo) do período filtrado.
+  - Lista agrupada por dia.
 - Recorrências (assinaturas, aluguel, salário): cadastra com dia do mês e o app aplica automaticamente.
 - Categorias padrão (Alimentação, Transporte, etc.) + criação de categorias personalizadas com ícone e cor.
 - Bolinha flutuante de IA visível em todas as telas com:
@@ -70,4 +74,32 @@ artifacts/mobile/
 
 - `@react-native-async-storage/async-storage` (já no scaffold)
 - `expo-secure-store@~15.0.8` (pinado à versão do SDK 54)
+- `expo-speech-recognition`
 - `date-fns`
+
+## Build (gerar APK com EAS)
+
+Configurado em `artifacts/mobile/eas.json` com 3 perfis:
+
+- **development** — APK com dev client (para testes em ambiente local).
+- **preview** — APK Android distribuição interna (instala diretamente no celular). É o perfil recomendado para o usuário gerar e usar.
+- **production** — App Bundle (`.aab`) para Play Store, com auto-incremento.
+
+Identidade do app: `com.bolso.app` (Android `package` + iOS `bundleIdentifier`).
+
+Comandos a partir de `artifacts/mobile/`:
+
+```bash
+# 1. Login na conta Expo (uma vez)
+npx eas-cli@latest login
+
+# 2. Inicializar projeto EAS (uma vez — cria o projectId em app.json)
+npx eas-cli@latest init
+
+# 3. Gerar APK de teste (preview)
+npx eas-cli@latest build --platform android --profile preview
+```
+
+O build roda na nuvem da Expo (gratuito até o limite mensal) e ao final entrega um link `.apk` para baixar e instalar no celular. Atualizações JS subsequentes podem ser entregues via `npx eas-cli@latest update --channel preview` sem precisar gerar APK novo.
+
+Quando mudar algo nativo (libs novas, permissões, ícone), gerar APK novo. Reinstalar por cima preserva todos os dados locais.

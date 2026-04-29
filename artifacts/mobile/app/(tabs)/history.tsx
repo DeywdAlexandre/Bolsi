@@ -9,7 +9,13 @@ import { PeriodSelector, type Period } from "@/components/PeriodSelector";
 import { TransactionItem } from "@/components/TransactionItem";
 import { useAppData } from "@/contexts/AppDataContext";
 import { useColors } from "@/hooks/useColors";
-import { formatDate, getMonthName } from "@/lib/format";
+import {
+  formatCurrency,
+  formatDate,
+  formatRangeLabel,
+  getMonthName,
+  isoDayOf,
+} from "@/lib/format";
 import type { Transaction, TransactionType } from "@/lib/types";
 
 type Filter = "all" | TransactionType;
@@ -34,8 +40,14 @@ export default function HistoryScreen() {
         const d = new Date(t.date);
         if (period.mode === "month") {
           if (d.getMonth() !== period.month || d.getFullYear() !== period.year) return false;
-        } else {
+        } else if (period.mode === "year") {
           if (d.getFullYear() !== period.year) return false;
+        } else if (period.mode === "range") {
+          const day = isoDayOf(t.date);
+          const start = period.startDate ?? "";
+          const end = period.endDate ?? "";
+          if (!start || !end) return false;
+          if (day < start || day > end) return false;
         }
         if (filter !== "all" && t.type !== filter) return false;
         if (categoryFilter && t.categoryId !== categoryFilter) return false;
@@ -43,6 +55,16 @@ export default function HistoryScreen() {
       })
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [transactions, period, filter, categoryFilter]);
+
+  const totals = useMemo(() => {
+    let income = 0;
+    let expense = 0;
+    for (const t of filtered) {
+      if (t.type === "income") income += t.amount;
+      else expense += t.amount;
+    }
+    return { income, expense, balance: income - expense };
+  }, [filtered]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, Transaction[]>();
@@ -55,8 +77,13 @@ export default function HistoryScreen() {
     return Array.from(map.entries()).map(([date, items]) => ({ date, items }));
   }, [filtered]);
 
-  const periodLabel =
-    period.mode === "month" ? `${getMonthName(period.month)} ${period.year}` : `${period.year}`;
+  const periodLabel = (() => {
+    if (period.mode === "month") return `${getMonthName(period.month)} ${period.year}`;
+    if (period.mode === "year") return `${period.year}`;
+    if (period.startDate && period.endDate)
+      return formatRangeLabel(period.startDate, period.endDate);
+    return "período";
+  })();
 
   const usedCategories = useMemo(() => {
     const ids = new Set<string>();
@@ -83,8 +110,39 @@ export default function HistoryScreen() {
         </View>
 
         <View style={styles.periodWrap}>
-          <PeriodSelector period={period} onChange={setPeriod} />
+          <PeriodSelector period={period} onChange={setPeriod} enableRange />
         </View>
+
+        {filtered.length > 0 ? (
+          <View style={[styles.statementBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.statementCol}>
+              <Text style={[styles.statementLabel, { color: colors.mutedForeground }]}>Entradas</Text>
+              <Text style={[styles.statementValue, { color: colors.primary }]} numberOfLines={1}>
+                {formatCurrency(totals.income)}
+              </Text>
+            </View>
+            <View style={[styles.statementSep, { backgroundColor: colors.border }]} />
+            <View style={styles.statementCol}>
+              <Text style={[styles.statementLabel, { color: colors.mutedForeground }]}>Gastos</Text>
+              <Text style={[styles.statementValue, { color: colors.expense }]} numberOfLines={1}>
+                {formatCurrency(totals.expense)}
+              </Text>
+            </View>
+            <View style={[styles.statementSep, { backgroundColor: colors.border }]} />
+            <View style={styles.statementCol}>
+              <Text style={[styles.statementLabel, { color: colors.mutedForeground }]}>Saldo</Text>
+              <Text
+                style={[
+                  styles.statementValue,
+                  { color: totals.balance >= 0 ? colors.foreground : colors.expense },
+                ]}
+                numberOfLines={1}
+              >
+                {formatCurrency(totals.balance)}
+              </Text>
+            </View>
+          </View>
+        ) : null}
 
         <View style={styles.filterRow}>
           {(["all", "expense", "income"] as Filter[]).map((f) => {
@@ -263,6 +321,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 10,
+  },
+  statementBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  statementCol: {
+    flex: 1,
+    alignItems: "center",
+    paddingHorizontal: 4,
+    gap: 4,
+  },
+  statementSep: {
+    width: 1,
+    alignSelf: "stretch",
+    marginVertical: 4,
+  },
+  statementLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  statementValue: {
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
   },
   group: {
     marginTop: 14,

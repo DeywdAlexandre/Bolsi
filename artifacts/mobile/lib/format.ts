@@ -92,6 +92,50 @@ export function isSameYear(iso: string, year: number): boolean {
   return d.getFullYear() === year;
 }
 
+export function toIsoDay(d: Date): string {
+  const y = d.getFullYear();
+  const m = (d.getMonth() + 1).toString().padStart(2, "0");
+  const day = d.getDate().toString().padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+export function fromIsoDay(s: string): Date {
+  const [y, m, d] = s.split("-").map((n) => parseInt(n, 10));
+  return new Date(y, (m || 1) - 1, d || 1, 12, 0, 0, 0);
+}
+
+export function isoDayOf(iso: string): string {
+  const d = new Date(iso);
+  return toIsoDay(d);
+}
+
+export function formatDayShort(iso: string): string {
+  const d = fromIsoDay(iso);
+  const day = d.getDate().toString().padStart(2, "0");
+  return `${day} ${getMonthShort(d.getMonth()).toLowerCase()}`;
+}
+
+export function formatRangeLabel(start: string, end: string): string {
+  const s = fromIsoDay(start);
+  const e = fromIsoDay(end);
+  const sameMonth = s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear();
+  const sameYear = s.getFullYear() === e.getFullYear();
+  if (start === end) return formatDayShort(start);
+  if (sameMonth) {
+    return `${s.getDate()} – ${e.getDate()} ${getMonthShort(e.getMonth()).toLowerCase()}`;
+  }
+  if (sameYear) {
+    return `${s.getDate()} ${getMonthShort(s.getMonth()).toLowerCase()} – ${e.getDate()} ${getMonthShort(e.getMonth()).toLowerCase()}`;
+  }
+  return `${s.getDate()}/${s.getMonth() + 1}/${s.getFullYear()} – ${e.getDate()}/${e.getMonth() + 1}/${e.getFullYear()}`;
+}
+
+export function addDaysIso(iso: string, days: number): string {
+  const d = fromIsoDay(iso);
+  d.setDate(d.getDate() + days);
+  return toIsoDay(d);
+}
+
 export function genId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
 }

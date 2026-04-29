@@ -14,9 +14,16 @@
       "backgroundColor": "#0a0a0c"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.bolso.app"
     },
-    "android": {},
+    "android": {
+      "package": "com.bolso.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#0a0a0c"
+      }
+    },
     "web": {
       "favicon": "./assets/images/icon.png"
     },
