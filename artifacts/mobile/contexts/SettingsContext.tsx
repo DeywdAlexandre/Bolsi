@@ -1,0 +1,75 @@
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+
+import { DEFAULT_MODEL } from "@/lib/openrouter";
+import { deleteSecureItem, getSecureItem, SECURE_KEYS, setSecureItem } from "@/lib/secureStorage";
+import { loadJson, saveJson, STORAGE_KEYS } from "@/lib/storage";
+import type { Settings } from "@/lib/types";
+
+type SettingsContextValue = {
+  ready: boolean;
+  settings: Settings;
+  apiKey: string | null;
+  setApiKey: (value: string | null) => Promise<void>;
+  setModel: (model: string) => Promise<void>;
+};
+
+const DEFAULT_SETTINGS: Settings = {
+  model: DEFAULT_MODEL,
+  currency: "BRL",
+};
+
+const SettingsContext = createContext<SettingsContextValue | null>(null);
+
+export function SettingsProvider({ children }: { children: React.ReactNode }) {
+  const [ready, setReady] = useState(false);
+  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  const [apiKey, setApiKeyState] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [s, k] = await Promise.all([
+        loadJson<Settings>(STORAGE_KEYS.settings, DEFAULT_SETTINGS),
+        getSecureItem(SECURE_KEYS.openrouterKey),
+      ]);
+      if (cancelled) return;
+      setSettings({ ...DEFAULT_SETTINGS, ...s });
+      setApiKeyState(k);
+      setReady(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const setApiKey = useCallback(async (value: string | null) => {
+    if (value && value.trim().length > 0) {
+      await setSecureItem(SECURE_KEYS.openrouterKey, value.trim());
+      setApiKeyState(value.trim());
+    } else {
+      await deleteSecureItem(SECURE_KEYS.openrouterKey);
+      setApiKeyState(null);
+    }
+  }, []);
+
+  const setModel = useCallback(async (model: string) => {
+    setSettings((prev) => {
+      const next = { ...prev, model: model.trim() || DEFAULT_MODEL };
+      void saveJson(STORAGE_KEYS.settings, next);
+      return next;
+    });
+  }, []);
+
+  const value = useMemo<SettingsContextValue>(
+    () => ({ ready, settings, apiKey, setApiKey, setModel }),
+    [ready, settings, apiKey, setApiKey, setModel],
+  );
+
+  return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
+}
+
+export function useSettings(): SettingsContextValue {
+  const ctx = useContext(SettingsContext);
+  if (!ctx) throw new Error("useSettings must be used within SettingsProvider");
+  return ctx;
+}

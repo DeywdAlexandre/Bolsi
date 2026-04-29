@@ -1,0 +1,238 @@
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+
+import { useAppData } from "@/contexts/AppDataContext";
+import { useSettings } from "@/contexts/SettingsContext";
+import { AI_TOOLS, buildToolHandlers, SYSTEM_PROMPT } from "@/lib/aiTools";
+import { genId } from "@/lib/format";
+import { chatCompletion, OpenRouterError } from "@/lib/openrouter";
+import { loadJson, saveJson, STORAGE_KEYS } from "@/lib/storage";
+import type { ChatMessage, ToolCall } from "@/lib/types";
+
+type ChatContextValue = {
+  messages: ChatMessage[];
+  sending: boolean;
+  isOpen: boolean;
+  unread: number;
+  open: () => void;
+  close: () => void;
+  send: (text: string) => Promise<void>;
+  clear: () => Promise<void>;
+};
+
+const ChatContext = createContext<ChatContextValue | null>(null);
+
+const MAX_HISTORY = 50;
+const MAX_TOOL_ROUNDS = 4;
+
+export function ChatProvider({ children }: { children: React.ReactNode }) {
+  const { settings, apiKey } = useSettings();
+  const data = useAppData();
+
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [sending, setSending] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [unread, setUnread] = useState(0);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const stored = await loadJson<ChatMessage[]>(STORAGE_KEYS.chat, []);
+      if (cancelled) return;
+      setMessages(stored);
+      setHydrated(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    void saveJson(STORAGE_KEYS.chat, messages.slice(-MAX_HISTORY));
+  }, [messages, hydrated]);
+
+  const open = useCallback(() => {
+    setIsOpen(true);
+    setUnread(0);
+  }, []);
+  const close = useCallback(() => setIsOpen(false), []);
+
+  const clear = useCallback(async () => {
+    setMessages([]);
+    await saveJson(STORAGE_KEYS.chat, []);
+  }, []);
+
+  const send = useCallback(
+    async (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed || sending) return;
+
+      const userMsg: ChatMessage = {
+        id: genId(),
+        role: "user",
+        content: trimmed,
+        createdAt: Date.now(),
+      };
+
+      setMessages((prev) => [...prev, userMsg]);
+
+      if (!apiKey) {
+        const errMsg: ChatMessage = {
+          id: genId(),
+          role: "assistant",
+          content:
+            "Você precisa configurar a chave do OpenRouter nas Configurações antes de conversar comigo.",
+          createdAt: Date.now(),
+        };
+        setMessages((prev) => [...prev, errMsg]);
+        if (!isOpen) setUnread((u) => u + 1);
+        return;
+      }
+
+      setSending(true);
+
+      const handlers = buildToolHandlers({
+        transactions: data.transactions,
+        categories: data.categories,
+        addTransaction: data.addTransactionRaw,
+        removeTransaction: data.removeTransaction,
+        addRecurring: data.addRecurringRaw,
+      });
+
+      const systemMsg: ChatMessage = {
+        id: "system",
+        role: "system",
+        content: SYSTEM_PROMPT,
+        createdAt: 0,
+      };
+
+      let conversation: ChatMessage[] = [systemMsg, ...messages, userMsg];
+
+      try {
+        for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+          const result = await chatCompletion({
+            apiKey,
+            model: settings.model,
+            messages: conversation,
+            tools: AI_TOOLS,
+          });
+
+          const toolCalls = result.toolCalls ?? [];
+
+          if (toolCalls.length === 0) {
+            const assistantMsg: ChatMessage = {
+              id: genId(),
+              role: "assistant",
+              content: result.content || "...",
+              createdAt: Date.now(),
+            };
+            setMessages((prev) => [...prev, assistantMsg]);
+            if (!isOpen) setUnread((u) => u + 1);
+            break;
+          }
+
+          const assistantToolMsg: ChatMessage = {
+            id: genId(),
+            role: "assistant",
+            content: result.content || "",
+            toolCalls,
+            createdAt: Date.now(),
+          };
+          setMessages((prev) => [...prev, assistantToolMsg]);
+          conversation = [...conversation, assistantToolMsg];
+
+          const toolResults: ChatMessage[] = [];
+          for (const call of toolCalls) {
+            const out = await runTool(call, handlers);
+            const toolMsg: ChatMessage = {
+              id: genId(),
+              role: "tool",
+              content: JSON.stringify(out),
+              toolCallId: call.id,
+              name: call.function.name,
+              createdAt: Date.now(),
+            };
+            toolResults.push(toolMsg);
+          }
+          setMessages((prev) => [...prev, ...toolResults]);
+          conversation = [...conversation, ...toolResults];
+
+          if (round === MAX_TOOL_ROUNDS - 1) {
+            const final: ChatMessage = {
+              id: genId(),
+              role: "assistant",
+              content: "Operações concluídas.",
+              createdAt: Date.now(),
+            };
+            setMessages((prev) => [...prev, final]);
+            if (!isOpen) setUnread((u) => u + 1);
+          }
+        }
+      } catch (err) {
+        const errorText =
+          err instanceof OpenRouterError
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : "Erro desconhecido.";
+        const errMsg: ChatMessage = {
+          id: genId(),
+          role: "assistant",
+          content: `Não consegui responder: ${errorText}`,
+          createdAt: Date.now(),
+        };
+        setMessages((prev) => [...prev, errMsg]);
+        if (!isOpen) setUnread((u) => u + 1);
+      } finally {
+        setSending(false);
+      }
+    },
+    [apiKey, data, isOpen, messages, sending, settings.model],
+  );
+
+  const value = useMemo<ChatContextValue>(
+    () => ({ messages, sending, isOpen, unread, open, close, send, clear }),
+    [messages, sending, isOpen, unread, open, close, send, clear],
+  );
+
+  return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
+}
+
+async function runTool(
+  call: ToolCall,
+  handlers: ReturnType<typeof buildToolHandlers>,
+): Promise<unknown> {
+  let args: Record<string, unknown> = {};
+  try {
+    args = call.function.arguments ? JSON.parse(call.function.arguments) : {};
+  } catch {
+    return { ok: false, error: "Argumentos JSON inválidos" };
+  }
+  try {
+    switch (call.function.name) {
+      case "add_transaction":
+        return await handlers.addTransaction(args as Parameters<typeof handlers.addTransaction>[0]);
+      case "list_transactions":
+        return await handlers.listTransactions(args as Parameters<typeof handlers.listTransactions>[0]);
+      case "get_summary":
+        return await handlers.getSummary(args as Parameters<typeof handlers.getSummary>[0]);
+      case "get_categories":
+        return await handlers.getCategories();
+      case "add_recurring":
+        return await handlers.addRecurring(args as Parameters<typeof handlers.addRecurring>[0]);
+      case "delete_transaction":
+        return await handlers.deleteTransaction(args as Parameters<typeof handlers.deleteTransaction>[0]);
+      default:
+        return { ok: false, error: `Ferramenta desconhecida: ${call.function.name}` };
+    }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Erro" };
+  }
+}
+
+export function useChat(): ChatContextValue {
+  const ctx = useContext(ChatContext);
+  if (!ctx) throw new Error("useChat must be used within ChatProvider");
+  return ctx;
+}

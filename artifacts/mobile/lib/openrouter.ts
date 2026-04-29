@@ -1,0 +1,143 @@
+import { fetch } from "expo/fetch";
+
+import type { ChatMessage, ToolCall } from "./types";
+
+export const DEFAULT_MODEL = "openai/gpt-4o-mini";
+
+export const SUGGESTED_MODELS: { value: string; label: string; hint: string }[] = [
+  { value: "openai/gpt-4o-mini", label: "GPT-4o mini", hint: "Recomendado · Rápido e barato" },
+  { value: "google/gemini-2.0-flash-001", label: "Gemini 2.0 Flash", hint: "Ainda mais barato" },
+  { value: "anthropic/claude-3.5-haiku", label: "Claude 3.5 Haiku", hint: "Conversação excelente" },
+  { value: "deepseek/deepseek-chat", label: "DeepSeek Chat", hint: "O mais barato" },
+  { value: "openai/gpt-4o", label: "GPT-4o", hint: "Mais inteligente · Custa mais" },
+];
+
+type OpenRouterMessage = {
+  role: "system" | "user" | "assistant" | "tool";
+  content: string | null;
+  tool_calls?: ToolCall[];
+  tool_call_id?: string;
+  name?: string;
+};
+
+export type ToolDefinition = {
+  type: "function";
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+};
+
+export type ChatCompletionResult = {
+  content: string;
+  toolCalls: ToolCall[];
+  raw: unknown;
+};
+
+export class OpenRouterError extends Error {
+  status?: number;
+  constructor(message: string, status?: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
+function toApiMessages(messages: ChatMessage[]): OpenRouterMessage[] {
+  return messages.map((m) => {
+    const base: OpenRouterMessage = {
+      role: m.role,
+      content: m.content || (m.toolCalls && m.toolCalls.length > 0 ? null : ""),
+    };
+    if (m.toolCalls && m.toolCalls.length > 0) base.tool_calls = m.toolCalls;
+    if (m.toolCallId) base.tool_call_id = m.toolCallId;
+    if (m.name) base.name = m.name;
+    return base;
+  });
+}
+
+export async function chatCompletion(params: {
+  apiKey: string;
+  model: string;
+  messages: ChatMessage[];
+  tools?: ToolDefinition[];
+}): Promise<ChatCompletionResult> {
+  const { apiKey, model, messages, tools } = params;
+
+  if (!apiKey) {
+    throw new OpenRouterError("Chave da API do OpenRouter não configurada.");
+  }
+
+  const body: Record<string, unknown> = {
+    model,
+    messages: toApiMessages(messages),
+    temperature: 0.7,
+  };
+
+  if (tools && tools.length > 0) {
+    body.tools = tools;
+    body.tool_choice = "auto";
+  }
+
+  let response: Response;
+  try {
+    response = (await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        "HTTP-Referer": "https://replit.com/",
+        "X-Title": "Bolso",
+      },
+      body: JSON.stringify(body),
+    })) as unknown as Response;
+  } catch (err) {
+    throw new OpenRouterError(
+      err instanceof Error ? err.message : "Erro de rede ao contactar OpenRouter.",
+    );
+  }
+
+  if (!response.ok) {
+    let detail = "";
+    try {
+      const text = await response.text();
+      detail = text;
+    } catch {
+      // ignore
+    }
+    throw new OpenRouterError(
+      `OpenRouter retornou ${response.status}. ${detail}`.trim(),
+      response.status,
+    );
+  }
+
+  const data = (await response.json()) as {
+    choices?: {
+      message?: {
+        content?: string | null;
+        tool_calls?: ToolCall[] | null;
+      };
+    }[];
+  };
+
+  const message = data.choices?.[0]?.message;
+  return {
+    content: (message?.content ?? "").toString(),
+    toolCalls: message?.tool_calls ?? [],
+    raw: data,
+  };
+}
+
+export async function listModels(apiKey: string): Promise<{ id: string; name?: string }[]> {
+  if (!apiKey) return [];
+  try {
+    const res = (await fetch("https://openrouter.ai/api/v1/models", {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    })) as unknown as Response;
+    if (!res.ok) return [];
+    const json = (await res.json()) as { data?: { id: string; name?: string }[] };
+    return json.data ?? [];
+  } catch {
+    return [];
+  }
+}
