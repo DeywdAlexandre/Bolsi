@@ -9,7 +9,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import React, { useEffect } from "react";
+import * as Updates from "expo-updates";
+import React, { useEffect, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -94,14 +95,45 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
   });
+  const [updateChecked, setUpdateChecked] = useState(__DEV__ || !Updates.isEnabled);
 
   useEffect(() => {
-    if (fontsLoaded || fontError) {
+    if (updateChecked) return;
+    let done = false;
+    const finish = () => {
+      if (!done) {
+        done = true;
+        setUpdateChecked(true);
+      }
+    };
+    const timer = setTimeout(finish, 6000);
+    (async () => {
+      try {
+        const result = await Updates.checkForUpdateAsync();
+        if (result.isAvailable) {
+          await Updates.fetchUpdateAsync();
+          await Updates.reloadAsync();
+          return;
+        }
+      } catch {
+      }
+      finish();
+    })();
+    return () => {
+      clearTimeout(timer);
+      finish();
+    };
+  }, [updateChecked]);
+
+  const ready = (fontsLoaded || fontError) && updateChecked;
+
+  useEffect(() => {
+    if (ready) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError]);
+  }, [ready]);
 
-  if (!fontsLoaded && !fontError) return null;
+  if (!ready) return null;
 
   return (
     <SafeAreaProvider>
