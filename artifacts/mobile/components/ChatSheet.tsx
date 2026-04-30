@@ -45,11 +45,14 @@ export function ChatSheet() {
 
   const visibleMessages = useMemo(
     () =>
-      messages.filter(
-        (m) =>
-          m.role === "user" ||
-          (m.role === "assistant" && (m.content || (m.toolCalls?.length ?? 0) > 0)),
-      ),
+      messages
+        .filter(
+          (m) =>
+            m.role === "user" ||
+            (m.role === "assistant" && (m.content || (m.toolCalls?.length ?? 0) > 0)),
+        )
+        .slice()
+        .reverse(),
     [messages],
   );
 
@@ -73,7 +76,8 @@ export function ChatSheet() {
             styles.header,
             {
               borderBottomColor: colors.border,
-              paddingTop: Platform.OS === "web" ? 16 : 12,
+              paddingTop:
+                Platform.OS === "web" ? 16 : Math.max(insets.top, 12) + 8,
             },
           ]}
         >
