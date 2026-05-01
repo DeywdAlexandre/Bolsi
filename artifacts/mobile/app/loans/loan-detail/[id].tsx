@@ -142,6 +142,24 @@ export default function LoanDetailScreen() {
       <Stack.Screen
         options={{
           title: "Detalhes",
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.foreground,
+          headerLeft: () => (
+            <Pressable 
+              onPress={() => {
+                if (router.canGoBack()) {
+                  router.back();
+                } else {
+                  router.replace("/loans");
+                }
+              }} 
+              hitSlop={12} 
+              style={{ marginLeft: -10, padding: 8 }}
+            >
+              <Feather name="arrow-left" size={24} color={colors.foreground} />
+            </Pressable>
+          ),
           headerRight: () => (
             <View style={{ flexDirection: "row", gap: 12 }}>
               <Pressable

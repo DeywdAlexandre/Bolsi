@@ -20,21 +20,23 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppDataProvider } from "@/contexts/AppDataContext";
 import { ChatProvider } from "@/contexts/ChatContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
-import colors from "@/constants/colors";
+import { useColors } from "@/hooks/useColors";
 
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
 
 function RootLayoutNav() {
+  const colors = useColors();
+  
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: colors.light.background },
-        headerTintColor: colors.light.foreground,
+        headerStyle: { backgroundColor: colors.background },
+        headerTintColor: colors.foreground,
         headerTitleStyle: { fontFamily: "Inter_600SemiBold" },
         headerShadowVisible: false,
-        contentStyle: { backgroundColor: colors.light.background },
+        contentStyle: { backgroundColor: colors.background },
       }}
     >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -136,20 +138,28 @@ export default function RootLayout() {
   if (!ready) return null;
 
   return (
+    <SettingsProvider>
+      <AppContent />
+    </SettingsProvider>
+  );
+}
+
+function AppContent() {
+  const colors = useColors();
+  
+  return (
     <SafeAreaProvider>
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
-          <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.light.background }}>
+          <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
             <KeyboardProvider>
-              <SettingsProvider>
-                <AppDataProvider>
-                  <ChatProvider>
-                    <StatusBar style="light" />
-                    <RootLayoutNav />
-                    <ChatSheet />
-                  </ChatProvider>
-                </AppDataProvider>
-              </SettingsProvider>
+              <AppDataProvider>
+                <ChatProvider>
+                  <StatusBar style="auto" />
+                  <RootLayoutNav />
+                  <ChatSheet />
+                </ChatProvider>
+              </AppDataProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>
         </QueryClientProvider>

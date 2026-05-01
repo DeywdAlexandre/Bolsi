@@ -55,7 +55,7 @@ export function CategoryBreakdown({ transactions, categories, type }: Props) {
           const pct = (item.total / total) * 100;
           return (
             <View
-              key={item.categoryId}
+              key={`bar-${item.categoryId}`}
               style={{
                 flex: pct,
                 height: "100%",
@@ -72,7 +72,7 @@ export function CategoryBreakdown({ transactions, categories, type }: Props) {
         {top3.map((item) => {
           const share = (item.total / total) * 100;
           return (
-            <View key={item.categoryId} style={styles.row}>
+            <View key={`row-${item.categoryId}`} style={styles.row}>
               <IconCircle name={item.cat!.icon} color={item.cat!.color} size={32} />
               <View style={styles.content}>
                 <View style={styles.headerRow}>

@@ -32,9 +32,12 @@ export type Recurring = {
   createdAt: string;
 };
 
+export type ThemeMode = "system" | "light" | "dark";
+
 export type Settings = {
   model: string;
   currency: string;
+  themeMode: ThemeMode;
 };
 
 export type ChatRole = "user" | "assistant" | "system" | "tool";

@@ -18,15 +18,18 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { useColors } from "@/hooks/useColors";
 import { SUGGESTED_MODELS } from "@/lib/openrouter";
 
+import { Stack } from "expo-router";
+
 export default function SettingsScreen() {
   const colors = useColors();
-  const { settings, apiKey, setApiKey, setModel } = useSettings();
+  const { settings, apiKey, setApiKey, setModel, setThemeMode } = useSettings();
   const { resetAll } = useAppData();
 
   const [keyDraft, setKeyDraft] = useState<string>("");
   const [modelDraft, setModelDraft] = useState<string>(settings.model);
   const [showKey, setShowKey] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [isModelPickerOpen, setIsModelPickerOpen] = useState(false);
 
   useEffect(() => {
     setKeyDraft(apiKey ?? "");
@@ -40,30 +43,109 @@ export default function SettingsScreen() {
     await setApiKey(keyDraft.trim() || null);
     await setModel(modelDraft.trim());
     setSavedAt(Date.now());
+    setTimeout(() => setSavedAt(null), 3000);
   };
 
   const handleClear = async () => {
-    if (Platform.OS === "web") {
-      const ok = globalThis.confirm?.("Apagar todos os dados? Essa ação não pode ser desfeita.");
-      if (!ok) return;
-      await resetAll();
-      return;
-    }
-    Alert.alert(
-      "Apagar todos os dados",
-      "Isso remove transações, recorrências e categorias personalizadas. Não pode ser desfeito.",
-      [
-        { text: "Cancelar", style: "cancel" },
-        { text: "Apagar tudo", style: "destructive", onPress: () => void resetAll() },
-      ],
-    );
+    const confirmAction = () => {
+      if (Platform.OS === "web") {
+        const text = globalThis.prompt?.("Para apagar todos os dados, digite APAGAR abaixo:");
+        if (text === "APAGAR") {
+          resetAll();
+        } else if (text !== null) {
+          globalThis.alert?.("Palavra-chave incorreta. Ação cancelada.");
+        }
+      } else {
+        // No Mobile, usamos o Alert.prompt se disponível, ou uma sequência de confirmação
+        Alert.alert(
+          "⚠️ Ação Irreversível",
+          "Todos os seus dados (transações, veículos, empréstimos) serão apagados. Deseja continuar?",
+          [
+            { text: "Cancelar", style: "cancel" },
+            {
+              text: "Sim, Prosseguir",
+              style: "destructive",
+              onPress: () => {
+                // Segunda camada de segurança
+                setTimeout(() => {
+                  Alert.alert(
+                    "Confirmação Final",
+                    'Tem certeza absoluta? Essa é sua última chance de cancelar.',
+                    [
+                      { text: "Cancelar", style: "cancel" },
+                      { text: "APAGAR TUDO", style: "destructive", onPress: () => void resetAll() }
+                    ]
+                  );
+                }, 500);
+              }
+            }
+          ]
+        );
+      }
+    };
+
+    confirmAction();
   };
 
   return (
-    <ScrollView
+    <>
+      <Stack.Screen
+        options={{
+          title: "Configurações",
+          headerLeft: () => (
+            <Pressable 
+              onPress={() => {
+                if (router.canGoBack()) {
+                  router.back();
+                } else {
+                  router.replace("/(tabs)");
+                }
+              }} 
+              hitSlop={12} 
+              style={{ marginLeft: -10, padding: 8 }}
+            >
+              <Feather name="arrow-left" size={24} color={colors.foreground} />
+            </Pressable>
+          ),
+        }}
+      />
+      <ScrollView
       style={{ backgroundColor: colors.background }}
       contentContainerStyle={styles.container}
     >
+      <Section title="Aparência">
+        <View style={[styles.themeRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          {(["system", "light", "dark"] as const).map((m) => {
+            const active = settings.themeMode === m;
+            const labels = { system: "Sistema", light: "Claro", dark: "Escuro" };
+            const icons = { system: "smartphone", light: "sun", dark: "moon" } as const;
+            
+            return (
+              <Pressable
+                key={m}
+                onPress={() => setThemeMode(m)}
+                style={[
+                  styles.themeBtn,
+                  active && { backgroundColor: colors.background, borderColor: colors.border },
+                ]}
+              >
+                <Feather 
+                  name={icons[m]} 
+                  size={16} 
+                  color={active ? colors.primary : colors.mutedForeground} 
+                />
+                <Text style={[
+                  styles.themeText, 
+                  { color: active ? colors.foreground : colors.mutedForeground }
+                ]}>
+                  {labels[m]}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </Section>
+
       <Section title="Inteligência Artificial">
         <Text style={[styles.help, { color: colors.mutedForeground }]}>
           O assistente usa o OpenRouter para acessar modelos de IA. Sua chave fica armazenada de
@@ -105,61 +187,70 @@ export default function SettingsScreen() {
           </Pressable>
         </Field>
 
-        <Field label="Modelo">
-          <TextInput
-            value={modelDraft}
-            onChangeText={setModelDraft}
-            placeholder="openai/gpt-4o-mini"
-            placeholderTextColor={colors.mutedForeground}
-            autoCapitalize="none"
-            autoCorrect={false}
+        <Field label="Modelo de IA">
+          <Pressable
+            onPress={() => setIsModelPickerOpen(!isModelPickerOpen)}
             style={[
-              styles.input,
-              { backgroundColor: colors.card, color: colors.foreground, borderColor: colors.border },
+              styles.modelSelector,
+              { backgroundColor: colors.card, borderColor: colors.border },
             ]}
-          />
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.modelValue, { color: colors.foreground }]}>
+                {SUGGESTED_MODELS.find(m => m.value === modelDraft)?.label || modelDraft}
+              </Text>
+              <Text style={[styles.modelSub, { color: colors.mutedForeground }]}>
+                {modelDraft}
+              </Text>
+            </View>
+            <Feather 
+              name={isModelPickerOpen ? "chevron-up" : "chevron-down"} 
+              size={20} 
+              color={colors.mutedForeground} 
+            />
+          </Pressable>
 
-          <View style={styles.modelGrid}>
-            {SUGGESTED_MODELS.map((m) => {
-              const active = modelDraft === m.value;
-              return (
-                <Pressable
-                  key={m.value}
-                  onPress={() => setModelDraft(m.value)}
-                  style={[
-                    styles.modelChip,
-                    {
-                      backgroundColor: active ? colors.primary : colors.card,
-                      borderColor: active ? colors.primary : colors.border,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={{
-                      color: active ? colors.primaryForeground : colors.foreground,
-                      fontFamily: "Inter_600SemiBold",
-                      fontSize: 13,
+          {isModelPickerOpen && (
+            <View style={[styles.modelPicker, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              {SUGGESTED_MODELS.map((m) => {
+                const active = modelDraft === m.value;
+                return (
+                  <Pressable
+                    key={m.value}
+                    onPress={() => {
+                      setModelDraft(m.value);
+                      setIsModelPickerOpen(false);
                     }}
+                    style={[
+                      styles.modelItem,
+                      active && { backgroundColor: colors.primary + "15" }
+                    ]}
                   >
-                    {m.label}
-                  </Text>
-                  <Text
-                    style={{
-                      color: active ? colors.primaryForeground : colors.mutedForeground,
-                      fontFamily: "Inter_400Regular",
-                      fontSize: 11,
-                      marginTop: 2,
-                    }}
-                  >
-                    {m.hint}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          <Text style={[styles.help, { color: colors.mutedForeground }]}>
-            Você pode usar qualquer modelo do OpenRouter. Cole o ID exato (ex: provider/model).
-          </Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.modelItemLabel, { color: active ? colors.primary : colors.foreground }]}>
+                        {m.label}
+                      </Text>
+                      <Text style={[styles.modelItemHint, { color: colors.mutedForeground }]}>
+                        {m.hint}
+                      </Text>
+                    </View>
+                    {active && <Feather name="check" size={18} color={colors.primary} />}
+                  </Pressable>
+                );
+              })}
+              <View style={styles.customModelBox}>
+                <Text style={[styles.customLabel, { color: colors.mutedForeground }]}>Outro modelo (ID):</Text>
+                <TextInput
+                  value={modelDraft}
+                  onChangeText={setModelDraft}
+                  placeholder="provider/model-id"
+                  placeholderTextColor={colors.mutedForeground}
+                  autoCapitalize="none"
+                  style={[styles.customInput, { color: colors.foreground, borderBottomColor: colors.border }]}
+                />
+              </View>
+            </View>
+          )}
         </Field>
 
         <Pressable
@@ -170,12 +261,12 @@ export default function SettingsScreen() {
           ]}
         >
           <Text style={[styles.saveText, { color: colors.primaryForeground }]}>
-            Salvar configurações
+            Salvar IA
           </Text>
         </Pressable>
 
         {savedAt ? (
-          <Text style={[styles.savedFlag, { color: colors.income }]}>Configurações salvas.</Text>
+          <Text style={[styles.savedFlag, { color: colors.income }]}>Alterações salvas.</Text>
         ) : null}
       </Section>
 
@@ -266,6 +357,7 @@ export default function SettingsScreen() {
         </Text>
       </View>
     </ScrollView>
+    </>
   );
 }
 
@@ -332,15 +424,92 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
   },
+  themeRow: {
+    flexDirection: "row",
+    padding: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 6,
+  },
+  themeBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "transparent",
+  },
+  themeText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
+  modelSelector: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 12,
+  },
+  modelValue: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+  },
+  modelSub: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
+  },
+  modelPicker: {
+    marginTop: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  modelItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0,0,0,0.05)",
+  },
+  modelItemLabel: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  modelItemHint: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
+  },
+  customModelBox: {
+    padding: 16,
+    gap: 8,
+  },
+  customLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    textTransform: "uppercase",
+  },
+  customInput: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+  },
   help: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18 },
   link: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
   saveBtn: {
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: "center",
+    marginTop: 8,
   },
   saveText: { fontSize: 14, fontFamily: "Inter_700Bold" },
-  savedFlag: { fontSize: 12, fontFamily: "Inter_600SemiBold", textAlign: "center" },
+  savedFlag: { fontSize: 12, fontFamily: "Inter_600SemiBold", textAlign: "center", marginTop: 8 },
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -361,3 +530,4 @@ const styles = StyleSheet.create({
   footer: { paddingTop: 8, alignItems: "center" },
   footerText: { fontSize: 11, fontFamily: "Inter_400Regular" },
 });
+

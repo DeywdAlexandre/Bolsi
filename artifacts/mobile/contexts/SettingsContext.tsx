@@ -11,11 +11,13 @@ type SettingsContextValue = {
   apiKey: string | null;
   setApiKey: (value: string | null) => Promise<void>;
   setModel: (model: string) => Promise<void>;
+  setThemeMode: (mode: "system" | "light" | "dark") => Promise<void>;
 };
 
 const DEFAULT_SETTINGS: Settings = {
   model: DEFAULT_MODEL,
   currency: "BRL",
+  themeMode: "system",
 };
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -60,9 +62,17 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const setThemeMode = useCallback(async (mode: "system" | "light" | "dark") => {
+    setSettings((prev) => {
+      const next = { ...prev, themeMode: mode };
+      void saveJson(STORAGE_KEYS.settings, next);
+      return next;
+    });
+  }, []);
+
   const value = useMemo<SettingsContextValue>(
-    () => ({ ready, settings, apiKey, setApiKey, setModel }),
-    [ready, settings, apiKey, setApiKey, setModel],
+    () => ({ ready, settings, apiKey, setApiKey, setModel, setThemeMode }),
+    [ready, settings, apiKey, setApiKey, setModel, setThemeMode],
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
