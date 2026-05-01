@@ -6,6 +6,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: "cat_freelance", name: "Freelance", icon: "edit-3", color: "#3ddc97", type: "income", isDefault: true },
   { id: "cat_investments", name: "Investimentos", icon: "trending-up", color: "#06b6d4", type: "income", isDefault: true },
   { id: "cat_gifts", name: "Presentes", icon: "gift", color: "#a78bfa", type: "income", isDefault: true },
+  { id: "cat_loan_income", name: "Recebimento de Empréstimo", icon: "repeat", color: "#22d3ee", type: "income", isDefault: true },
   { id: "cat_income_other", name: "Outros", icon: "plus-circle", color: "#94a3b8", type: "income", isDefault: true },
 
   // Expenses
@@ -18,6 +19,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: "cat_clothing", name: "Vestuário", icon: "tag", color: "#fbbf24", type: "expense", isDefault: true },
   { id: "cat_bills", name: "Contas", icon: "file-text", color: "#94a3b8", type: "expense", isDefault: true },
   { id: "cat_subscriptions", name: "Assinaturas", icon: "repeat", color: "#22d3ee", type: "expense", isDefault: true },
+  { id: "cat_loan_expense", name: "Pagamento de Empréstimo", icon: "repeat", color: "#ef4444", type: "expense", isDefault: true },
   { id: "cat_expense_other", name: "Outros", icon: "more-horizontal", color: "#737380", type: "expense", isDefault: true },
 ];
 

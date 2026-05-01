@@ -29,7 +29,6 @@
         "backgroundColor": "#0a0a0c"
       },
       "permissions": [
-        "android.permission.RECORD_AUDIO",
         "android.permission.RECORD_AUDIO"
       ]
     },

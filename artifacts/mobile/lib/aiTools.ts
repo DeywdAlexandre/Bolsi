@@ -1,6 +1,7 @@
 import type { ToolDefinition } from "./openrouter";
 import type { Category, Recurring, Transaction, TransactionType } from "./types";
 import { genId, todayIso } from "./format";
+import { computeVehicleStats, formatKmPerLiter, formatKm } from "./vehicleStats";
 
 export type AddTransactionArgs = {
   type: TransactionType;
@@ -130,6 +131,114 @@ export const AI_TOOLS: ToolDefinition[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "add_loan_contact",
+      description: "Adiciona uma nova pessoa ao módulo de Empréstimos.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Nome completo da pessoa" },
+        },
+        required: ["name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_loan_contacts",
+      description: "Lista as pessoas cadastradas no módulo de empréstimos e seus saldos devedores ou a receber.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_loans",
+      description: "Lista os empréstimos ativos de uma pessoa específica ou todos.",
+      parameters: {
+        type: "object",
+        properties: {
+          contactName: { type: "string", description: "Opcional: nome da pessoa para filtrar" },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_loan_payment",
+      description: "Registra um pagamento ou recebimento referente a um empréstimo.",
+      parameters: {
+        type: "object",
+        properties: {
+          loanDescription: { type: "string", description: "Descrição do empréstimo para identificar qual pagar (ex: 'reforma')" },
+          amount: { type: "number", description: "Valor pago/recebido em reais" },
+          addToExtrat: { type: "boolean", description: "Se deve lançar também no extrato principal (padrão true)" },
+        },
+        required: ["loanDescription", "amount"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_vehicles",
+      description: "Lista os veículos cadastrados na garagem do usuário.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_fueling",
+      description: "Registra um novo abastecimento de combustível.",
+      parameters: {
+        type: "object",
+        properties: {
+          vehicleName: { type: "string", description: "Nome ou placa do veículo (ex: 'Honda Civic' ou 'ABC-1234')" },
+          amount: { type: "number", description: "Valor total pago em reais" },
+          liters: { type: "number", description: "Quantidade de litros abastecidos" },
+          odometer: { type: "number", description: "Quilometragem atual (odômetro) do veículo" },
+          date: { type: "string", description: "Opcional: Data ISO (YYYY-MM-DD). Padrão é hoje." },
+        },
+        required: ["vehicleName", "amount", "liters", "odometer"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_oil_change",
+      description: "Registra uma troca de óleo do motor.",
+      parameters: {
+        type: "object",
+        properties: {
+          vehicleName: { type: "string", description: "Nome ou placa do veículo" },
+          odometer: { type: "number", description: "Quilometragem no momento da troca" },
+          nextChangeOdometer: { type: "number", description: "Quilometragem prevista para a próxima troca" },
+          date: { type: "string", description: "Opcional: Data ISO. Padrão é hoje." },
+        },
+        required: ["vehicleName", "odometer", "nextChangeOdometer"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_vehicle_stats",
+      description: "Retorna estatísticas de consumo (KM/L) e status de manutenção de um veículo.",
+      parameters: {
+        type: "object",
+        properties: {
+          vehicleName: { type: "string", description: "Nome ou placa do veículo" },
+        },
+        required: ["vehicleName"],
+      },
+    },
+  },
 ];
 
 export type ToolHandlers = {
@@ -145,6 +254,34 @@ export type ToolHandlers = {
   getCategories: () => Promise<{ income: { id: string; name: string }[]; expense: { id: string; name: string }[] }>;
   addRecurring: (args: AddRecurringArgs) => Promise<{ ok: boolean; recurring?: Recurring; error?: string }>;
   deleteTransaction: (args: DeleteTransactionArgs) => Promise<{ ok: boolean; deleted?: number; error?: string }>;
+  addLoanContact: (args: { name: string }) => Promise<{ ok: boolean; contact?: any; error?: string }>;
+  listLoanContacts: () => Promise<{ contacts: any[] }>;
+  addLoan: (args: {
+    contactName: string;
+    direction: "lend" | "borrow";
+    type: "monthly_interest" | "fixed_installments";
+    amount: number;
+    interestRate: number;
+    description: string;
+    installmentsCount?: number;
+  }) => Promise<{ ok: boolean; loan?: any; error?: string }>;
+  listLoans: (args: { contactName?: string }) => Promise<{ loans: any[] }>;
+  addLoanPayment: (args: { loanDescription: string; amount: number; addToExtrat?: boolean }) => Promise<{ ok: boolean; payment?: any; error?: string }>;
+  listVehicles: () => Promise<{ vehicles: any[] }>;
+  addFueling: (args: {
+    vehicleName: string;
+    amount: number;
+    liters: number;
+    odometer: number;
+    date?: string;
+  }) => Promise<{ ok: boolean; fueling?: any; error?: string }>;
+  addOilChange: (args: {
+    vehicleName: string;
+    odometer: number;
+    nextChangeOdometer: number;
+    date?: string;
+  }) => Promise<{ ok: boolean; oilChange?: any; error?: string }>;
+  getVehicleStats: (args: { vehicleName: string }) => Promise<{ stats: any }>;
 };
 
 function findCategory(categories: Category[], name: string, type: TransactionType): Category | undefined {
@@ -160,8 +297,20 @@ export function buildToolHandlers(deps: {
   transactions: Transaction[];
   categories: Category[];
   addTransaction: (t: Transaction) => Promise<void>;
+  addTransactionRaw: (t: Transaction) => Promise<void>;
   removeTransaction: (id: string) => Promise<void>;
   addRecurring: (r: Recurring) => Promise<void>;
+  loanContacts: any[];
+  loans: any[];
+  loanPayments: any[];
+  addLoanContact: (c: any) => Promise<any>;
+  addLoan: (l: any) => Promise<any>;
+  addLoanPayment: (p: any) => Promise<any>;
+  vehicles: any[];
+  fuelings: any[];
+  oilChanges: any[];
+  addFueling: (f: any) => Promise<any>;
+  addOilChange: (o: any) => Promise<any>;
 }): ToolHandlers {
   return {
     async addTransaction(args) {
@@ -293,6 +442,172 @@ export function buildToolHandlers(deps: {
       await deps.removeTransaction(target.id);
       return { ok: true, deleted: 1 };
     },
+
+    async addLoanContact(args) {
+      const contact = await deps.addLoanContact({ name: args.name });
+      return { ok: true, contact };
+    },
+
+    async listLoanContacts() {
+      const result = deps.loanContacts.map((c) => {
+        const cLoans = deps.loans.filter((l) => l.contactId === c.id);
+        let balance = 0;
+        cLoans.forEach((l) => {
+          const lPayments = deps.loanPayments.filter((p) => p.loanId === l.id);
+          const paid = lPayments.reduce((s, p) => s + p.amount, 0);
+          const interest = (l.principalAmount * l.interestRate) / 100;
+          const total = l.principalAmount + interest;
+          if (l.direction === "lend") balance += total - paid;
+          else balance -= total - paid;
+        });
+        return { name: c.name, balance };
+      });
+      return { contacts: result };
+    },
+
+    async addLoan(args) {
+      const contact = deps.loanContacts.find(
+        (c) => c.name.toLowerCase().includes(args.contactName.toLowerCase()) || args.contactName.toLowerCase().includes(c.name.toLowerCase())
+      );
+      if (!contact) return { ok: false, error: "Pessoa não encontrada. Você precisa adicionar o contato primeiro usando add_loan_contact." };
+
+      const loan = await deps.addLoan({
+        contactId: contact.id,
+        direction: args.direction,
+        type: args.type,
+        description: args.description,
+        principalAmount: args.amount,
+        interestRate: args.interestRate,
+        installmentsCount: args.installmentsCount,
+        startDate: new Date().toISOString(),
+      });
+      return { ok: true, loan };
+    },
+    async listLoans(args) {
+      let filteredLoans = deps.loans;
+      if (args.contactName) {
+        const contact = deps.loanContacts.find((c) =>
+          c.name.toLowerCase().includes(args.contactName!.toLowerCase())
+        );
+        if (contact) {
+          filteredLoans = filteredLoans.filter((l) => l.contactId === contact.id);
+        }
+      }
+
+      const result = filteredLoans.map((l) => {
+        const contact = deps.loanContacts.find((c) => c.id === l.contactId);
+        const payments = deps.loanPayments.filter((p) => p.loanId === l.id);
+        const paid = payments.reduce((s, p) => s + p.amount, 0);
+        const interest = (l.principalAmount * l.interestRate) / 100;
+        const total = l.principalAmount + interest;
+        return {
+          id: l.id,
+          contactName: contact?.name || "Desconhecido",
+          description: l.description,
+          amount: l.principalAmount,
+          balance: total - paid,
+          direction: l.direction,
+        };
+      });
+      return { loans: result };
+    },
+    async addLoanPayment(args) {
+      const loan = deps.loans.find((l) =>
+        l.description.toLowerCase().includes(args.loanDescription.toLowerCase())
+      );
+      if (!loan) return { ok: false, error: "Empréstimo não encontrado. Verifique a descrição." };
+
+      const payments = deps.loanPayments.filter((p) => p.loanId === loan.id);
+      const paidPrincipal = payments.reduce((s, p) => s + p.principalPaid, 0);
+      const remainingPrincipal = loan.principalAmount - paidPrincipal;
+      const currentInterest = (remainingPrincipal * loan.interestRate) / 100;
+
+      const interestToPay = Math.min(args.amount, currentInterest);
+      const principalToPay = Math.max(0, args.amount - interestToPay);
+
+      const payment = await deps.addLoanPayment({
+        loanId: loan.id,
+        amount: args.amount,
+        interestPaid: interestToPay,
+        principalPaid: principalToPay,
+        date: new Date().toISOString(),
+      });
+
+      if (args.addToExtrat !== false) {
+        const isLend = loan.direction === "lend";
+        await deps.addTransactionRaw({
+          id: genId(),
+          type: isLend ? "income" : "expense",
+          amount: args.amount,
+          categoryId: isLend ? "cat_loan_income" : "cat_loan_expense",
+          date: new Date().toISOString(),
+          description: `${isLend ? "Recebimento" : "Pagamento"} (IA): ${loan.description}`,
+          createdAt: new Date().toISOString(),
+        });
+      }
+
+      return { ok: true, payment };
+    },
+    async listVehicles() {
+      const list = deps.vehicles.map((v) => ({
+        id: v.id,
+        name: v.name,
+        plate: v.plate,
+        fuelType: v.fuelType,
+      }));
+      return { vehicles: list };
+    },
+    async addFueling(args) {
+      const vehicle = deps.vehicles.find(
+        (v) => v.name.toLowerCase().includes(args.vehicleName.toLowerCase()) || v.plate?.toLowerCase().includes(args.vehicleName.toLowerCase())
+      );
+      if (!vehicle) return { ok: false, error: "Veículo não encontrado." };
+
+      const fueling = await deps.addFueling({
+        vehicleId: vehicle.id,
+        amount: args.amount,
+        liters: args.liters,
+        odometer: args.odometer,
+        date: args.date || new Date().toISOString(),
+        totalCost: args.amount,
+        tankStatus: "full", // Padrão IA assume tanque cheio para cálculo de consumo
+      });
+
+      return { ok: true, fueling };
+    },
+    async addOilChange(args) {
+      const vehicle = deps.vehicles.find(
+        (v) => v.name.toLowerCase().includes(args.vehicleName.toLowerCase()) || v.plate?.toLowerCase().includes(args.vehicleName.toLowerCase())
+      );
+      if (!vehicle) return { ok: false, error: "Veículo não encontrado." };
+
+      const oilChange = await deps.addOilChange({
+        vehicleId: vehicle.id,
+        odometer: args.odometer,
+        nextChangeKm: args.nextChangeOdometer,
+        date: args.date || new Date().toISOString(),
+        description: "Troca via IA",
+      });
+
+      return { ok: true, oilChange };
+    },
+    async getVehicleStats(args) {
+      const vehicle = deps.vehicles.find(
+        (v) => v.name.toLowerCase().includes(args.vehicleName.toLowerCase()) || v.plate?.toLowerCase().includes(args.vehicleName.toLowerCase())
+      );
+      if (!vehicle) return { stats: null, error: "Veículo não encontrado." };
+
+      const stats = computeVehicleStats(vehicle, deps.fuelings, deps.oilChanges);
+      return {
+        stats: {
+          vehicleName: vehicle.name,
+          avgKmL: stats.avgKmPerLiter ? formatKmPerLiter(stats.avgKmPerLiter) + " km/L" : "N/A",
+          lastOdometer: stats.lastOdometer ? formatKm(stats.lastOdometer) + " km" : "N/A",
+          oilStatus: stats.oilStatus,
+          kmRemainingOil: stats.kmRemainingOil ? formatKm(stats.kmRemainingOil) + " km" : "N/A",
+        },
+      };
+    },
   };
 }
 
@@ -302,7 +617,11 @@ Diretrizes:
 - Sempre responda em português do Brasil.
 - Use as ferramentas disponíveis para realmente adicionar, consultar e remover dados — não invente números.
 - Quando o usuário descrever um gasto ou entrada (ex: "gastei 30 no almoço"), use add_transaction imediatamente, sem pedir confirmação para valores triviais.
-- Para perguntas tipo "quanto gastei...", chame list_transactions ou get_summary com os filtros adequados.
+- Quando o usuário mencionar pagamentos de empréstimos (ex: "recebi 50 do joão pelo juro da reforma"), use add_loan_payment.
+- Para consultas de dívidas, use list_loans ou list_loan_contacts.
+- Para abastecimentos, use add_fueling (ex: "abasteci 50 reais no civic, 40000 km").
+- Para troca de óleo, use add_oil_change.
+- Para médias e manutenção, use get_vehicle_stats.
 - Valores em reais (R$). Quando responder, formate como "R$ 45,90".
 - Seja breve, claro e natural. Não use emojis.
 - Se for tema fora de finanças, converse normalmente como um assistente útil.`;

@@ -11,6 +11,9 @@ import type {
   Transaction,
   TransactionType,
   Vehicle,
+  LoanContact,
+  Loan,
+  LoanPayment,
 } from "@/lib/types";
 
 type AppDataContextValue = {
@@ -40,6 +43,17 @@ type AppDataContextValue = {
   addOilChange: (input: Omit<OilChange, "id" | "createdAt">) => Promise<OilChange>;
   updateOilChange: (id: string, patch: Partial<OilChange>) => Promise<void>;
   removeOilChange: (id: string) => Promise<void>;
+  loanContacts: LoanContact[];
+  loans: Loan[ ];
+  loanPayments: LoanPayment[];
+  addLoanContact: (input: Omit<LoanContact, "id" | "createdAt">) => Promise<LoanContact>;
+  updateLoanContact: (id: string, patch: Partial<LoanContact>) => Promise<void>;
+  removeLoanContact: (id: string) => Promise<void>;
+  addLoan: (input: Omit<Loan, "id" | "createdAt" | "status">) => Promise<Loan>;
+  updateLoan: (id: string, patch: Partial<Loan>) => Promise<void>;
+  removeLoan: (id: string) => Promise<void>;
+  addLoanPayment: (input: Omit<LoanPayment, "id" | "createdAt">) => Promise<LoanPayment>;
+  removeLoanPayment: (id: string) => Promise<void>;
   resetAll: () => Promise<void>;
 };
 
@@ -53,26 +67,45 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [fuelings, setFuelings] = useState<Fueling[]>([]);
   const [oilChanges, setOilChanges] = useState<OilChange[]>([]);
+  const [loanContacts, setLoanContacts] = useState<LoanContact[]>([]);
+  const [loans, setLoans] = useState<Loan[]>([]);
+  const [loanPayments, setLoanPayments] = useState<LoanPayment[]>([]);
 
   // Load
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [tx, rc, cats, veh, fue, oil] = await Promise.all([
+      const results = await Promise.all([
         loadJson<Transaction[]>(STORAGE_KEYS.transactions, []),
         loadJson<Recurring[]>(STORAGE_KEYS.recurring, []),
         loadJson<Category[]>(STORAGE_KEYS.categories, DEFAULT_CATEGORIES),
         loadJson<Vehicle[]>(STORAGE_KEYS.vehicles, []),
         loadJson<Fueling[]>(STORAGE_KEYS.fuelings, []),
         loadJson<OilChange[]>(STORAGE_KEYS.oilChanges, []),
+        loadJson<LoanContact[]>(STORAGE_KEYS.loanContacts, []),
+        loadJson<Loan[]>(STORAGE_KEYS.loans, []),
+        loadJson<LoanPayment[]>(STORAGE_KEYS.loanPayments, []),
       ]);
       if (cancelled) return;
+      const [tx, rc, cats, veh, fue, oil, lc, l, lp] = results;
+      
+      // Merge com categorias padrões caso falte alguma (como as novas de empréstimo)
+      const mergedCats = [...cats];
+      DEFAULT_CATEGORIES.forEach(def => {
+        if (!mergedCats.find(c => c.id === def.id)) {
+          mergedCats.push(def);
+        }
+      });
+
       setTransactions(tx);
       setRecurring(rc);
-      setCategories(cats.length ? cats : DEFAULT_CATEGORIES);
+      setCategories(mergedCats);
       setVehicles(veh);
       setFuelings(fue);
       setOilChanges(oil);
+      setLoanContacts(lc);
+      setLoans(l);
+      setLoanPayments(lp);
       setReady(true);
     })();
     return () => {
@@ -308,6 +341,111 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const addLoanContact = useCallback(async (input: Omit<LoanContact, "id" | "createdAt">) => {
+    const lc: LoanContact = { ...input, id: "lc_" + genId(), createdAt: new Date().toISOString() };
+    setLoanContacts((prev) => {
+      const next = [lc, ...prev];
+      void saveJson(STORAGE_KEYS.loanContacts, next);
+      return next;
+    });
+    return lc;
+  }, []);
+
+  const updateLoanContact = useCallback(async (id: string, patch: Partial<LoanContact>) => {
+    setLoanContacts((prev) => {
+      const next = prev.map((c) => (c.id === id ? { ...c, ...patch } : c));
+      void saveJson(STORAGE_KEYS.loanContacts, next);
+      return next;
+    });
+  }, []);
+
+  const removeLoanContact = useCallback(async (id: string) => {
+    setLoanContacts((prev) => {
+      const next = prev.filter((c) => c.id !== id);
+      void saveJson(STORAGE_KEYS.loanContacts, next);
+      return next;
+    });
+    setLoans((prev) => {
+      const next = prev.filter((l) => l.contactId !== id);
+      void saveJson(STORAGE_KEYS.loans, next);
+      return next;
+    });
+  }, []);
+
+  const addLoan = useCallback(async (input: Omit<Loan, "id" | "createdAt" | "status">) => {
+    const l: Loan = { ...input, id: "loan_" + genId(), createdAt: new Date().toISOString(), status: "active" };
+    setLoans((prev) => {
+      const next = [l, ...prev];
+      void saveJson(STORAGE_KEYS.loans, next);
+      return next;
+    });
+    return l;
+  }, []);
+
+  const updateLoan = useCallback(async (id: string, patch: Partial<Loan>) => {
+    setLoans((prev) => {
+      const next = prev.map((l) => (l.id === id ? { ...l, ...patch } : l));
+      void saveJson(STORAGE_KEYS.loans, next);
+      return next;
+    });
+  }, []);
+
+  const removeLoan = useCallback(async (id: string) => {
+    let initialTxId: string | undefined;
+
+    setLoans((prev) => {
+      const target = prev.find((l) => l.id === id);
+      initialTxId = target?.initialTransactionId;
+      const next = prev.filter((l) => l.id !== id);
+      void saveJson(STORAGE_KEYS.loans, next);
+      return next;
+    });
+
+    if (initialTxId) {
+      setTransactions((prev) => {
+        const next = prev.filter((t) => t.id !== initialTxId);
+        void saveJson(STORAGE_KEYS.transactions, next);
+        return next;
+      });
+    }
+
+    setLoanPayments((prev) => {
+      const next = prev.filter((p) => p.loanId !== id);
+      void saveJson(STORAGE_KEYS.loanPayments, next);
+      return next;
+    });
+  }, []);
+
+  const addLoanPayment = useCallback(async (input: Omit<LoanPayment, "id" | "createdAt">) => {
+    const lp: LoanPayment = { ...input, id: "lp_" + genId(), createdAt: new Date().toISOString() };
+    setLoanPayments((prev) => {
+      const next = [lp, ...prev];
+      void saveJson(STORAGE_KEYS.loanPayments, next);
+      return next;
+    });
+    return lp;
+  }, []);
+
+  const removeLoanPayment = useCallback(async (id: string) => {
+    let txToRemoveId: string | undefined;
+
+    setLoanPayments((prev) => {
+      const target = prev.find((p) => p.id === id);
+      txToRemoveId = target?.transactionId;
+      const next = prev.filter((p) => p.id !== id);
+      void saveJson(STORAGE_KEYS.loanPayments, next);
+      return next;
+    });
+
+    if (txToRemoveId) {
+      setTransactions((prev) => {
+        const next = prev.filter((t) => t.id !== txToRemoveId);
+        void saveJson(STORAGE_KEYS.transactions, next);
+        return next;
+      });
+    }
+  }, []);
+
   const resetAll = useCallback(async () => {
     setTransactions([]);
     setRecurring([]);
@@ -315,6 +453,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     setVehicles([]);
     setFuelings([]);
     setOilChanges([]);
+    setLoanContacts([]);
+    setLoans([]);
+    setLoanPayments([]);
     await Promise.all([
       saveJson(STORAGE_KEYS.transactions, []),
       saveJson(STORAGE_KEYS.recurring, []),
@@ -322,6 +463,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       saveJson(STORAGE_KEYS.vehicles, []),
       saveJson(STORAGE_KEYS.fuelings, []),
       saveJson(STORAGE_KEYS.oilChanges, []),
+      saveJson(STORAGE_KEYS.loanContacts, []),
+      saveJson(STORAGE_KEYS.loans, []),
+      saveJson(STORAGE_KEYS.loanPayments, []),
     ]);
   }, []);
 
@@ -356,6 +500,17 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       addOilChange,
       updateOilChange,
       removeOilChange,
+      loanContacts,
+      loans,
+      loanPayments,
+      addLoanContact,
+      updateLoanContact,
+      removeLoanContact,
+      addLoan,
+      updateLoan,
+      removeLoan,
+      addLoanPayment,
+      removeLoanPayment,
       resetAll,
     }),
     [
@@ -385,6 +540,17 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       addOilChange,
       updateOilChange,
       removeOilChange,
+      loanContacts,
+      loans,
+      loanPayments,
+      addLoanContact,
+      updateLoanContact,
+      removeLoanContact,
+      addLoan,
+      updateLoan,
+      removeLoan,
+      addLoanPayment,
+      removeLoanPayment,
       resetAll,
     ],
   );

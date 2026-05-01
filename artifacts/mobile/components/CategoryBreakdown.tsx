@@ -15,7 +15,7 @@ type Props = {
 export function CategoryBreakdown({ transactions, categories, type }: Props) {
   const colors = useColors();
 
-  const items = useMemo(() => {
+  const { items, total } = useMemo(() => {
     const map = new Map<string, number>();
     for (const t of transactions) {
       if (t.type !== type) continue;
@@ -28,11 +28,10 @@ export function CategoryBreakdown({ transactions, categories, type }: Props) {
       })
       .filter((x) => x.cat)
       .sort((a, b) => b.total - a.total);
-    return list;
+    
+    const totalSum = list.reduce((s, x) => s + x.total, 0);
+    return { items: list, total: totalSum };
   }, [transactions, categories, type]);
-
-  const max = items[0]?.total ?? 0;
-  const total = items.reduce((s, x) => s + x.total, 0);
 
   if (items.length === 0) {
     return (
@@ -44,54 +43,91 @@ export function CategoryBreakdown({ transactions, categories, type }: Props) {
     );
   }
 
+  const top3 = items.slice(0, 3);
+  const othersCount = items.length - 3;
+  const othersTotal = items.slice(3).reduce((s, x) => s + x.total, 0);
+
   return (
-    <View style={styles.list}>
-      {items.map((item) => {
-        const pct = max > 0 ? item.total / max : 0;
-        const share = total > 0 ? (item.total / total) * 100 : 0;
-        return (
-          <View key={item.categoryId} style={styles.row}>
-            <IconCircle name={item.cat!.icon} color={item.cat!.color} size={36} />
-            <View style={styles.middle}>
-              <View style={styles.headerRow}>
-                <Text style={[styles.name, { color: colors.foreground }]} numberOfLines={1}>
-                  {item.cat!.name}
-                </Text>
-                <Text style={[styles.amt, { color: colors.foreground }]}>
-                  {formatCurrency(item.total)}
+    <View style={styles.container}>
+      {/* Barra Empilhada (Stacked Bar) */}
+      <View style={[styles.stackedBar, { backgroundColor: colors.muted }]}>
+        {items.map((item, idx) => {
+          const pct = (item.total / total) * 100;
+          return (
+            <View
+              key={item.categoryId}
+              style={{
+                flex: pct,
+                height: "100%",
+                backgroundColor: item.cat!.color,
+                // Adiciona uma pequena margem entre os segmentos se não for o último
+                marginRight: idx < items.length - 1 ? 1 : 0,
+              }}
+            />
+          );
+        })}
+      </View>
+
+      <View style={styles.list}>
+        {top3.map((item) => {
+          const share = (item.total / total) * 100;
+          return (
+            <View key={item.categoryId} style={styles.row}>
+              <IconCircle name={item.cat!.icon} color={item.cat!.color} size={32} />
+              <View style={styles.content}>
+                <View style={styles.headerRow}>
+                  <Text style={[styles.name, { color: colors.foreground }]} numberOfLines={1}>
+                    {item.cat!.name}
+                  </Text>
+                  <Text style={[styles.amt, { color: colors.foreground }]}>
+                    {formatCurrency(item.total)}
+                  </Text>
+                </View>
+                <Text style={[styles.share, { color: colors.mutedForeground }]}>
+                  {share.toFixed(1).replace(".", ",")}% do total
                 </Text>
               </View>
-              <View style={[styles.barTrack, { backgroundColor: colors.muted }]}>
-                <View
-                  style={[
-                    styles.barFill,
-                    { width: `${Math.max(4, pct * 100)}%`, backgroundColor: item.cat!.color },
-                  ]}
-                />
-              </View>
-              <Text style={[styles.share, { color: colors.mutedForeground }]}>
-                {share.toFixed(1).replace(".", ",")}% do total
-              </Text>
             </View>
+          );
+        })}
+
+        {othersCount > 0 && (
+          <View style={styles.othersRow}>
+            <View style={[styles.othersDot, { backgroundColor: colors.mutedForeground }]} />
+            <Text style={[styles.othersText, { color: colors.mutedForeground }]}>
+              {othersCount === 1 
+                ? `+ 1 outra categoria (${formatCurrency(othersTotal)})`
+                : `+ ${othersCount} outras categorias (${formatCurrency(othersTotal)})`
+              }
+            </Text>
           </View>
-        );
-      })}
+        )}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    gap: 20, // Distância entre a barra e a lista solicitada pelo usuário
+  },
+  stackedBar: {
+    height: 12,
+    borderRadius: 6,
+    flexDirection: "row",
+    overflow: "hidden",
+  },
   list: {
-    gap: 14,
+    gap: 16,
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
   },
-  middle: {
+  content: {
     flex: 1,
-    gap: 6,
+    gap: 2,
   },
   headerRow: {
     flexDirection: "row",
@@ -107,18 +143,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_600SemiBold",
   },
-  barTrack: {
-    height: 8,
-    borderRadius: 4,
-    overflow: "hidden",
-  },
-  barFill: {
-    height: "100%",
-    borderRadius: 4,
-  },
   share: {
     fontSize: 11,
     fontFamily: "Inter_500Medium",
+  },
+  othersRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingLeft: 44, // Alinha com o texto acima (32 icon + 12 gap)
+  },
+  othersDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+  },
+  othersText: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    fontStyle: "italic",
   },
   empty: {
     padding: 24,
@@ -131,3 +174,4 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
   },
 });
+

@@ -200,6 +200,44 @@ export default function SettingsScreen() {
         </Pressable>
 
         <Pressable
+          onPress={() => Alert.alert("Em breve", "O backup via arquivo JSON estará disponível na próxima versão.")}
+          style={({ pressed }) => [
+            styles.row,
+            { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
+          ]}
+        >
+          <View style={[styles.rowIcon, { backgroundColor: colors.primary + "15" }]}>
+            <Feather name="upload" size={18} color={colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.rowTitle, { color: colors.foreground }]}>Exportar Backup</Text>
+            <Text style={[styles.rowSub, { color: colors.mutedForeground }]}>
+              Salvar todos os seus dados em um arquivo
+            </Text>
+          </View>
+          <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+        </Pressable>
+
+        <Pressable
+          onPress={() => Alert.alert("Em breve", "A importação de backup estará disponível na próxima versão.")}
+          style={({ pressed }) => [
+            styles.row,
+            { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
+          ]}
+        >
+          <View style={[styles.rowIcon, { backgroundColor: colors.accent + "15" }]}>
+            <Feather name="download" size={18} color={colors.accent} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.rowTitle, { color: colors.foreground }]}>Importar Backup</Text>
+            <Text style={[styles.rowSub, { color: colors.mutedForeground }]}>
+              Restaurar dados de um arquivo salvo
+            </Text>
+          </View>
+          <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+        </Pressable>
+
+        <Pressable
           onPress={handleClear}
           style={({ pressed }) => [
             styles.row,

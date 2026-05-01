@@ -98,3 +98,41 @@ export type OilChange = {
   expenseTransactionId?: string;
   createdAt: string;
 };
+export type LoanContact = {
+  id: string;
+  name: string;
+  phone?: string;
+  address?: string;
+  photo?: string;
+  createdAt: string;
+};
+
+export type LoanType = "monthly_interest" | "fixed_installments";
+export type LoanDirection = "lend" | "borrow"; // lend = emprestei, borrow = peguei
+
+export type Loan = {
+  id: string;
+  contactId: string;
+  type: LoanType;
+  direction: LoanDirection;
+  description: string;
+  principalAmount: number;
+  interestRate: number; // Porcentagem (ex: 10 para 10%)
+  installmentsCount?: number; // Para fixed_installments
+  startDate: string;
+  status: "active" | "completed";
+  initialTransactionId?: string; // ID da transação inicial no extrato principal
+  createdAt: string;
+};
+
+export type LoanPayment = {
+  id: string;
+  loanId: string;
+  amount: number;
+  interestPaid: number;
+  principalPaid: number;
+  date: string;
+  isMainExtratEntry: boolean;
+  transactionId?: string; // ID da transação vinculada no extrato principal
+  createdAt: string;
+};

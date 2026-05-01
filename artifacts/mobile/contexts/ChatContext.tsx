@@ -96,8 +96,20 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         transactions: data.transactions,
         categories: data.categories,
         addTransaction: data.addTransactionRaw,
+        addTransactionRaw: data.addTransactionRaw,
         removeTransaction: data.removeTransaction,
         addRecurring: data.addRecurringRaw,
+        loanContacts: data.loanContacts,
+        loans: data.loans,
+        loanPayments: data.loanPayments,
+        addLoanContact: data.addLoanContact,
+        addLoan: data.addLoan,
+        addLoanPayment: data.addLoanPayment,
+        vehicles: data.vehicles,
+        fuelings: data.fuelings,
+        oilChanges: data.oilChanges,
+        addFueling: data.addFueling,
+        addOilChange: data.addOilChange,
       });
 
       const systemMsg: ChatMessage = {
@@ -223,6 +235,24 @@ async function runTool(
         return await handlers.addRecurring(args as Parameters<typeof handlers.addRecurring>[0]);
       case "delete_transaction":
         return await handlers.deleteTransaction(args as Parameters<typeof handlers.deleteTransaction>[0]);
+      case "add_loan_contact":
+        return await handlers.addLoanContact(args as Parameters<typeof handlers.addLoanContact>[0]);
+      case "list_loan_contacts":
+        return await handlers.listLoanContacts();
+      case "add_loan":
+        return await handlers.addLoan(args as Parameters<typeof handlers.addLoan>[0]);
+      case "list_loans":
+        return await handlers.listLoans(args as Parameters<typeof handlers.listLoans>[0]);
+      case "add_loan_payment":
+        return await handlers.addLoanPayment(args as Parameters<typeof handlers.addLoanPayment>[0]);
+      case "list_vehicles":
+        return await handlers.listVehicles();
+      case "add_fueling":
+        return await handlers.addFueling(args as Parameters<typeof handlers.addFueling>[0]);
+      case "add_oil_change":
+        return await handlers.addOilChange(args as Parameters<typeof handlers.addOilChange>[0]);
+      case "get_vehicle_stats":
+        return await handlers.getVehicleStats(args as Parameters<typeof handlers.getVehicleStats>[0]);
       default:
         return { ok: false, error: `Ferramenta desconhecida: ${call.function.name}` };
     }

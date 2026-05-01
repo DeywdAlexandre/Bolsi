@@ -161,7 +161,7 @@ export default function DashboardScreen() {
               {recent.map((t, idx) => {
                 const cat = categories.find((c) => c.id === t.categoryId);
                 return (
-                  <View key={t.id}>
+                  <React.Fragment key={t.id}>
                     <View style={{ paddingHorizontal: 12 }}>
                       <TransactionItem
                         transaction={t}
@@ -174,7 +174,7 @@ export default function DashboardScreen() {
                     {idx < recent.length - 1 ? (
                       <View style={[styles.divider, { backgroundColor: colors.border }]} />
                     ) : null}
-                  </View>
+                  </React.Fragment>
                 );
               })}
             </View>

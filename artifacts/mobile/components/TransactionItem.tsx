@@ -19,6 +19,8 @@ export function TransactionItem({ transaction, category, onPress, showDate = tru
   const amountColor = isIncome ? colors.income : colors.foreground;
   const sign = isIncome ? "+" : "-";
 
+  const isLoan = category?.id === "cat_loan_income" || category?.id === "cat_loan_expense";
+
   return (
     <Pressable
       onPress={onPress}
@@ -44,6 +46,11 @@ export function TransactionItem({ transaction, category, onPress, showDate = tru
           {transaction.recurringId ? (
             <View style={[styles.badge, { backgroundColor: colors.muted }]}>
               <Text style={[styles.badgeText, { color: colors.mutedForeground }]}>fixo</Text>
+            </View>
+          ) : null}
+          {isLoan ? (
+            <View style={[styles.badge, { backgroundColor: colors.accent + "15" }]}>
+              <Text style={[styles.badgeText, { color: colors.accent }]}>Empréstimo</Text>
             </View>
           ) : null}
         </View>
