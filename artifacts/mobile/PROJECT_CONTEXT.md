@@ -55,4 +55,13 @@ O assistente Finn deve ser:
 - **Destinos**: Exportação manual para JSON (WhatsApp/E-mail) e futura integração automática com Google Drive.
 
 ---
-*Documento criado em 01/05/2026 para preservar a inteligência do projeto.*
+
+## 🚀 6. Execução Local
+Para rodar o ambiente de desenvolvimento web no terminal:
+```powershell
+cd "d:\Meus Projetos\01 - Apps nativos\Bolso\artifacts\mobile"
+pnpm exec expo start --web
+```
+
+---
+*Documento atualizado em 01/05/2026 para incluir diretrizes de execução.*
