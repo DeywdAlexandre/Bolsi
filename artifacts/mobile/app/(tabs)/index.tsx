@@ -41,8 +41,21 @@ export default function DashboardScreen() {
       if (t.type === "income") income += t.amount;
       else expense += t.amount;
     }
-    return { income, expense, balance: income - expense };
-  }, [filtered]);
+
+    let globalIncome = 0;
+    let globalExpense = 0;
+    for (const t of transactions) {
+      if (t.type === "income") globalIncome += t.amount;
+      else globalExpense += t.amount;
+    }
+
+    return { 
+      income, 
+      expense, 
+      balance: income - expense,
+      globalBalance: globalIncome - globalExpense 
+    };
+  }, [filtered, transactions]);
 
   const recent = useMemo(() => {
     return [...filtered]
@@ -54,36 +67,43 @@ export default function DashboardScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.headerBackground, { backgroundColor: colors.primary, height: topPad + 220 }]} />
+      
       <ScrollView
         contentContainerStyle={[
           styles.scroll,
-          { paddingTop: topPad + 8, paddingBottom: 120 },
+          { paddingTop: topPad + 10, paddingBottom: 120 },
         ]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.headerRow}>
           <View>
-            <Text style={[styles.greeting, { color: colors.mutedForeground }]}>Olá</Text>
-            <Text style={[styles.brand, { color: colors.foreground }]}>Bolso</Text>
+            <Text style={[styles.greeting, { color: colors.primaryForeground + "cc" }]}>Olá,</Text>
+            <Text style={[styles.brand, { color: colors.primaryForeground }]}>Deywd</Text>
           </View>
           <Pressable
             onPress={() => router.push("/settings")}
             hitSlop={10}
             style={({ pressed }) => [
               styles.headerBtn,
-              { backgroundColor: colors.muted, opacity: pressed ? 0.7 : 1 },
+              { backgroundColor: colors.primaryForeground + "22", opacity: pressed ? 0.7 : 1 },
             ]}
           >
-            <Feather name="settings" size={18} color={colors.foreground} />
+            <Feather name="settings" size={18} color={colors.primaryForeground} />
           </Pressable>
         </View>
 
-        <View style={styles.section}>
-          <PeriodSelector period={period} onChange={setPeriod} />
+        <View style={styles.periodContainer}>
+          <PeriodSelector period={period} onChange={setPeriod} isDarkBackground={true} />
         </View>
 
-        <View style={styles.section}>
-          <SummaryCards income={totals.income} expense={totals.expense} balance={totals.balance} />
+        <View style={styles.summaryContainer}>
+          <SummaryCards 
+            income={totals.income} 
+            expense={totals.expense} 
+            balance={totals.balance} 
+            globalBalance={totals.globalBalance}
+          />
         </View>
 
         <View style={styles.actionsRow}>
@@ -187,24 +207,32 @@ export default function DashboardScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  headerBackground: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+  },
   scroll: {
     paddingHorizontal: 20,
-    gap: 4,
   },
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 20,
   },
   greeting: {
-    fontSize: 13,
+    fontSize: 14,
     fontFamily: "Inter_500Medium",
   },
   brand: {
     fontSize: 26,
     fontFamily: "Inter_700Bold",
     letterSpacing: -0.5,
+    marginTop: -2,
   },
   headerBtn: {
     width: 40,
@@ -213,14 +241,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  periodContainer: {
+    marginBottom: 16,
+  },
+  summaryContainer: {
+    marginTop: 10,
+    marginBottom: 16,
+    zIndex: 1,
+    // Sombra sutil para o efeito de flutuação
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+  },
   section: {
-    marginTop: 14,
+    marginTop: 10,
+    marginBottom: 10,
   },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 10,
+    marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 16,
@@ -234,6 +277,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 10,
     marginTop: 12,
+    marginBottom: 10,
   },
   actionBtn: {
     flex: 1,

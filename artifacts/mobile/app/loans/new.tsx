@@ -119,11 +119,15 @@ export default function NewLoanScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={{ flex: 1 }}
+      style={{ flex: 1, backgroundColor: colors.background }}
     >
-      <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollView 
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.backBtn}>
+          <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
             <Feather name="arrow-left" size={24} color={colors.foreground} />
           </Pressable>
           <Text style={[styles.title, { color: colors.foreground }]}>
@@ -305,7 +309,10 @@ export default function NewLoanScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 60,
+  },
+  scrollContent: {
+    paddingTop: Platform.OS === "ios" ? 60 : 40,
+    paddingBottom: 100,
   },
   header: {
     flexDirection: "row",
@@ -328,7 +335,6 @@ const styles = StyleSheet.create({
   form: {
     paddingHorizontal: 20,
     gap: 20,
-    paddingBottom: 40,
   },
   toggleRow: {
     flexDirection: "row",

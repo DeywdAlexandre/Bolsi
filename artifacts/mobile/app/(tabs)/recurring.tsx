@@ -23,21 +23,23 @@ export default function RecurringScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: topPad + 8 }]}>
+      <View style={[styles.headerBackground, { backgroundColor: colors.primary, height: topPad + 110 }]} />
+      
+      <View style={[styles.header, { paddingTop: topPad + 12 }]}>
         <View>
-          <Text style={[styles.title, { color: colors.foreground }]}>Recorrentes</Text>
-          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-            Lançamentos que se repetem todo mês
+          <Text style={[styles.title, { color: colors.primaryForeground }]}>Fixos</Text>
+          <Text style={[styles.subtitle, { color: colors.primaryForeground + "cc" }]}>
+            Lançamentos mensais automáticos
           </Text>
         </View>
         <Pressable
           onPress={() => router.push("/recurring/new")}
           style={({ pressed }) => [
             styles.addBtn,
-            { backgroundColor: colors.foreground, opacity: pressed ? 0.7 : 1 },
+            { backgroundColor: colors.primaryForeground + "22", opacity: pressed ? 0.7 : 1 },
           ]}
         >
-          <Feather name="plus" size={18} color={colors.background} />
+          <Feather name="plus" size={18} color={colors.primaryForeground} />
         </Pressable>
       </View>
 
@@ -157,9 +159,17 @@ function RecurringRow({
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  headerBackground: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
   header: {
     paddingHorizontal: 20,
-    paddingBottom: 8,
+    paddingBottom: 20,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",

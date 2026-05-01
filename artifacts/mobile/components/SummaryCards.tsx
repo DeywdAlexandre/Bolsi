@@ -9,11 +9,14 @@ type Props = {
   income: number;
   expense: number;
   balance: number;
+  globalBalance: number;
 };
 
-export function SummaryCards({ income, expense, balance }: Props) {
+export function SummaryCards({ income, expense, balance, globalBalance }: Props) {
   const colors = useColors();
-  const isPositive = balance >= 0;
+  const isGlobalPositive = globalBalance >= 0;
+  const isPeriodPositive = balance >= 0;
+
   return (
     <View style={styles.container}>
       <View
@@ -23,16 +26,25 @@ export function SummaryCards({ income, expense, balance }: Props) {
         ]}
       >
         <Text style={[styles.bigLabel, { color: colors.mutedForeground }]}>
-          Saldo
+          Saldo Total
         </Text>
         <Text
           style={[
             styles.bigAmount,
-            { color: isPositive ? colors.foreground : colors.expense },
+            { color: isGlobalPositive ? colors.foreground : colors.expense },
           ]}
         >
-          {formatCurrency(balance)}
+          {formatCurrency(globalBalance)}
         </Text>
+        
+        <View style={styles.periodRow}>
+          <Text style={[styles.periodLabel, { color: colors.mutedForeground }]}>
+            Neste período:{" "}
+            <Text style={{ color: isPeriodPositive ? colors.income : colors.expense, fontFamily: "Inter_600SemiBold" }}>
+              {isPeriodPositive ? "+" : ""}{formatCurrency(balance)}
+            </Text>
+          </Text>
+        </View>
       </View>
 
       <View style={styles.smallRow}>
@@ -96,6 +108,16 @@ const styles = StyleSheet.create({
     fontSize: 36,
     fontFamily: "Inter_700Bold",
     letterSpacing: -1,
+  },
+  periodRow: {
+    marginTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0,0,0,0.03)",
+    paddingTop: 8,
+  },
+  periodLabel: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
   },
   smallRow: {
     flexDirection: "row",

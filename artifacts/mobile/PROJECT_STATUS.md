@@ -58,14 +58,15 @@ O **Bolso** é um assistente financeiro pessoal "Offline-First" com inteligênci
 
 ## ⏳ Próximos Passos (Backlog)
 
-### 🚀 Para o Próximo Build Nativo (Exige novo APK)
-- [ ] **Proteção Biométrica**: Solicitar digital/face ID ao abrir o app.
-- [ ] **Sistema de Alertas/Notificações**: Avisar sobre vencimentos de empréstimos e trocas de óleo.
+### 🚀 Prioridade Máxima: Próximo Build Nativo
+- [ ] **EAS Build (Android/iOS)**: Gerar instaladores (.apk e .ipa) para testar o app em ambiente real.
+- [ ] **Proteção Biométrica**: Solicitar digital/face ID ao abrir o app (exige build nativo).
+- [ ] **Sistema de Alertas/Notificações**: Avisar sobre vencimentos e trocas de óleo (exige build nativo).
 
 ### 📡 Para Atualização via OTA (Apenas código)
+- [ ] **Módulo de Metas**: Criar interface de objetivos e sonhos financeiros (Próximo grande módulo).
 - [ ] **Backup JSON**: Implementar a lógica real dos botões de exportação e importação.
-- [ ] **Fotos de Perfil**: Adicionar suporte para selecionar/tirar foto no cadastro de pessoas.
-- [ ] **Metas Financeiras**: Criar módulo para "Objetivos/Sonhos" (Poupando para X).
+- [ ] **Relatórios**: Gerar extratos detalhados em PDF.
 
 ---
-*Atualizado por Antigravity em 01/05/2026.*
+*Atualizado por Antigravity em 01/05/2026 - Versão Premium 1.1*

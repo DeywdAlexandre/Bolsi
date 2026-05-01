@@ -27,6 +27,7 @@ type Props = {
   onChange: (p: Period) => void;
   minYear?: number;
   enableRange?: boolean;
+  isDarkBackground?: boolean;
 };
 
 function ensureRange(p: Period): { start: string; end: string } {
@@ -42,6 +43,7 @@ export function PeriodSelector({
   onChange,
   minYear = 2020,
   enableRange = false,
+  isDarkBackground = false,
 }: Props) {
   const colors = useColors();
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -52,6 +54,11 @@ export function PeriodSelector({
     const { start, end } = ensureRange(period);
     return formatRangeLabel(start, end);
   })();
+
+  const bgColor = isDarkBackground ? colors.primaryForeground + "22" : colors.muted;
+  const activePillBg = isDarkBackground ? colors.primaryForeground : colors.background;
+  const textColor = isDarkBackground ? colors.primaryForeground : colors.foreground;
+  const inactiveTextColor = isDarkBackground ? colors.primaryForeground + "88" : colors.mutedForeground;
 
   const goPrev = () => {
     if (period.mode === "year") {
@@ -125,7 +132,7 @@ export function PeriodSelector({
 
   return (
     <View style={styles.row}>
-      <View style={[styles.modePill, { backgroundColor: colors.muted }]}>
+      <View style={[styles.modePill, { backgroundColor: bgColor }]}>
         {modes.map((m) => {
           const active = period.mode === m.value;
           return (
@@ -134,14 +141,14 @@ export function PeriodSelector({
               onPress={() => switchMode(m.value)}
               style={[
                 styles.pillBtn,
-                active && { backgroundColor: colors.background },
+                active && { backgroundColor: activePillBg },
               ]}
             >
               <Text
                 style={[
                   styles.pillText,
                   {
-                    color: active ? colors.foreground : colors.mutedForeground,
+                    color: active ? (isDarkBackground ? colors.primary : colors.foreground) : inactiveTextColor,
                     fontFamily: active ? "Inter_600SemiBold" : "Inter_500Medium",
                   },
                 ]}
@@ -153,17 +160,17 @@ export function PeriodSelector({
         })}
       </View>
 
-      <View style={[styles.navWrap, { backgroundColor: colors.muted }]}>
+      <View style={[styles.navWrap, { backgroundColor: bgColor }]}>
         <Pressable onPress={goPrev} style={styles.navBtn} hitSlop={8}>
-          <Feather name="chevron-left" size={18} color={colors.foreground} />
+          <Feather name="chevron-left" size={18} color={textColor} />
         </Pressable>
         <Pressable onPress={() => setPickerOpen(true)} style={styles.label} hitSlop={8}>
-          <Text style={[styles.labelText, { color: colors.foreground }]} numberOfLines={1}>
+          <Text style={[styles.labelText, { color: textColor }]} numberOfLines={1}>
             {label}
           </Text>
         </Pressable>
         <Pressable onPress={goNext} style={styles.navBtn} hitSlop={8}>
-          <Feather name="chevron-right" size={18} color={colors.foreground} />
+          <Feather name="chevron-right" size={18} color={textColor} />
         </Pressable>
       </View>
 

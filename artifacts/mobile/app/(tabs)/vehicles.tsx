@@ -26,28 +26,33 @@ export default function VehiclesScreen() {
     [vehicles],
   );
 
+  const topPad = insets.top;
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <View style={[styles.headerBackground, { backgroundColor: colors.primary, height: topPad + 110 }]} />
+      
       <ScrollView
         contentContainerStyle={{
-          paddingTop: insets.top + 12,
+          paddingTop: topPad + 12,
           paddingBottom: 120,
           paddingHorizontal: 20,
           gap: 16,
         }}
+        showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
           <View>
-            <Text style={[styles.title, { color: colors.foreground }]}>Veículos</Text>
-            <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-              Acompanhe consumo, custos e manutenção
+            <Text style={[styles.title, { color: colors.primaryForeground }]}>Veículos</Text>
+            <Text style={[styles.subtitle, { color: colors.primaryForeground + "cc" }]}>
+              Gestão de consumo e manutenção
             </Text>
           </View>
           <Pressable
             onPress={() => router.push("/vehicle/new")}
             style={({ pressed }) => [
               styles.addBtn,
-              { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 },
+              { backgroundColor: colors.primaryForeground + "22", opacity: pressed ? 0.85 : 1 },
             ]}
             hitSlop={6}
           >
@@ -186,10 +191,19 @@ function Stat({
 }
 
 const styles = StyleSheet.create({
+  headerBackground: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    marginBottom: 20,
   },
   title: {
     fontSize: 26,

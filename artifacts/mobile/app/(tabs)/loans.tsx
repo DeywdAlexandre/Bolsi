@@ -85,8 +85,10 @@ export default function LoansDashboard() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.headerBackground, { backgroundColor: colors.primary, height: 200 }]} />
+      
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.foreground }]}>Empréstimos</Text>
+        <Text style={[styles.title, { color: colors.primaryForeground }]}>Empréstimos</Text>
         
         {/* Cards de Resumo */}
         <View style={styles.statsRow}>
@@ -155,11 +157,19 @@ export default function LoansDashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 60,
+  },
+  headerBackground: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
   header: {
     paddingHorizontal: 20,
-    marginBottom: 20,
+    paddingTop: 60,
+    marginBottom: 10,
   },
   title: {
     fontSize: 28,
@@ -169,6 +179,7 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: "row",
     gap: 12,
+    marginTop: -10,
   },
   statCard: {
     flex: 1,
@@ -176,6 +187,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     gap: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   statLabel: {
     fontSize: 12,
@@ -192,6 +208,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 20,
+    marginTop: 10,
   },
   searchRow: {
     flexDirection: "row",
@@ -231,17 +248,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 16,
   },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarText: {
-    fontSize: 18,
-    fontFamily: "Inter_700Bold",
-  },
   contactInfo: {
     flex: 1,
     gap: 2,
@@ -255,4 +261,3 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
   },
 });
-
