@@ -50,18 +50,21 @@ export default function NewLoanScreen() {
   const { addTransactionRaw } = useAppData();
 
   const handleSave = async () => {
-    if (!description || !amount || !interest || saving) return;
+    if (!description || !amount || interest === "" || saving) return;
     
     setSaving(true);
     try {
-      const pAmount = parseFloat(amount);
+      const cleanAmount = amount.replace(",", ".");
+      const cleanInterest = interest.replace(",", ".");
+      const pAmount = parseFloat(cleanAmount);
+      
       const payload = {
         contactId,
         direction,
         type,
         description: description.trim(),
         principalAmount: pAmount,
-        interestRate: parseFloat(interest),
+        interestRate: parseFloat(cleanInterest),
         installmentsCount: type === "fixed_installments" ? parseInt(installments) : undefined,
         startDate: date,
       };
@@ -290,10 +293,13 @@ export default function NewLoanScreen() {
 
           <Pressable
             onPress={handleSave}
-            disabled={saving}
+            disabled={!description || !amount || interest === "" || saving}
             style={({ pressed }) => [
               styles.saveBtn,
-              { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 },
+              { 
+                backgroundColor: colors.primary, 
+                opacity: (!description || !amount || interest === "" || saving) ? 0.5 : (pressed ? 0.8 : 1) 
+              },
             ]}
           >
             <Text style={[styles.saveBtnText, { color: colors.primaryForeground }]}>
