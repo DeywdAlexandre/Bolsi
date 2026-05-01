@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Switch,
+  Alert,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -50,7 +51,23 @@ export default function NewLoanScreen() {
   const { addTransactionRaw } = useAppData();
 
   const handleSave = async () => {
-    if (!description || !amount || interest === "" || saving) return;
+    if (saving) return;
+
+    // Validação inteligente
+    const missingFields = [];
+    if (!description) missingFields.push("Descrição");
+    if (!amount) missingFields.push("Valor");
+    if (interest === "") missingFields.push("Taxa de Juros");
+
+    if (missingFields.length > 0) {
+      const msg = `Para salvar, preencha os seguintes campos: ${missingFields.join(", ")}.`;
+      if (Platform.OS === "web") {
+        window.alert(msg);
+      } else {
+        Alert.alert("Campos Obrigatórios", msg);
+      }
+      return;
+    }
     
     setSaving(true);
     try {
@@ -293,12 +310,12 @@ export default function NewLoanScreen() {
 
           <Pressable
             onPress={handleSave}
-            disabled={!description || !amount || interest === "" || saving}
+            disabled={saving}
             style={({ pressed }) => [
               styles.saveBtn,
               { 
                 backgroundColor: colors.primary, 
-                opacity: (!description || !amount || interest === "" || saving) ? 0.5 : (pressed ? 0.8 : 1) 
+                opacity: saving ? 0.5 : (pressed ? 0.8 : 1) 
               },
             ]}
           >

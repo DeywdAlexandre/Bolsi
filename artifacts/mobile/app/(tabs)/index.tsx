@@ -26,11 +26,15 @@ export default function DashboardScreen() {
 
   const filtered = useMemo(() => {
     return transactions.filter((t) => {
-      const d = new Date(t.date);
+      // t.date costuma ser YYYY-MM-DD ou ISO completo
+      const datePart = t.date.split("T")[0];
+      const [year, month] = datePart.split("-").map(Number);
+      
       if (period.mode === "month") {
-        return d.getMonth() === period.month && d.getFullYear() === period.year;
+        // month no split é 1-indexed (1=Jan), no period.month costuma ser 0-indexed
+        return (month - 1) === period.month && year === period.year;
       }
-      return d.getFullYear() === period.year;
+      return year === period.year;
     });
   }, [transactions, period]);
 

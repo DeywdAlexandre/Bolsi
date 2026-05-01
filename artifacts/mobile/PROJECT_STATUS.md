@@ -69,4 +69,24 @@ O **Bolso** é um assistente financeiro pessoal "Offline-First" com inteligênci
 - [ ] **Relatórios**: Gerar extratos detalhados em PDF.
 
 ---
+
+## 💾 Estratégia de Backup e Sincronização (Planejado)
+
+Para garantir a segurança dos dados e a persistência em caso de troca de dispositivo:
+
+### Fase 1: Exportação/Importação Manual (JSON)
+- **Exportar**: Gerar um arquivo `bolso_backup_YYYYMMDD.json` com o dump completo do `AsyncStorage`.
+- **Importar**: Leitura do arquivo JSON com validação de esquema antes de sobrescrever o banco local.
+- **Partilha**: Uso do `expo-sharing` para permitir enviar o arquivo para WhatsApp, E-mail ou Nuvem.
+
+### Fase 2: Sincronização com Google Drive (Premium)
+- **Integração OAuth 2.0**: Autenticação via Google para salvar na pasta oculta `appData`.
+- **Sobrescrita Inteligente**: Opção para manter apenas o backup mais recente ou as últimas 3 versões.
+- **Sincronização Automática**: Backup disparado após grandes alterações ou ao fechar o app.
+
+### 🛡️ Compatibilidade de Versões (Data Migration)
+- **Versionamento**: Cada backup terá um campo `version`.
+- **Migradores**: Lógica interna no app para "traduzir" dados de versões antigas para novos formatos de módulos futuros, garantindo que o app nunca trave ao restaurar dados do passado.
+
+---
 *Atualizado por Antigravity em 01/05/2026 - Versão Premium 1.1*
