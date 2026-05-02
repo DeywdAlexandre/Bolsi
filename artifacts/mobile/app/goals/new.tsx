@@ -54,21 +54,17 @@ export default function NewGoalScreen() {
       const simple = fv / n;
       const compound = i > 0 ? (fv * i) / (Math.pow(1 + i, n) - 1) : simple;
       const saved = (simple - compound) * n;
-      return { simple, compound, saved };
+      return { simple, compound, saved, profit: 0 };
     } else {
       const simple = pmt * n;
       const compound = i > 0 ? (pmt * (Math.pow(1 + i, n) - 1)) / i : simple;
       const profit = compound - simple;
-      return { simple, compound, profit };
+      return { simple, compound, profit, saved: 0 };
     }
   }, [type, fv, n, pmt, i]);
 
   const handleSave = async () => {
-    // VALIDAÇÃO RIGOROSA
-    if (!name.trim()) {
-      return Alert.alert("Campo Obrigatório", "Por favor, dê um nome para o seu sonho.");
-    }
-    
+    if (!name.trim()) return Alert.alert("Campo Obrigatório", "Por favor, dê um nome para o seu sonho.");
     if (type === "target_value") {
       if (fv <= 0) return Alert.alert("Valor Inválido", "Quanto você deseja atingir com essa meta?");
       if (n <= 0) return Alert.alert("Prazo Inválido", "Em quantos meses você pretende chegar lá?");
@@ -76,7 +72,6 @@ export default function NewGoalScreen() {
       if (pmt <= 0) return Alert.alert("Valor Inválido", "Quanto você pretende guardar todos os meses?");
       if (n <= 0) return Alert.alert("Prazo Inválido", "Defina um tempo para a simulação de futuro.");
     }
-
     if (rateKey === "custom_cdi" && (parseFloat(cdiPercentage) || 0) <= 0) {
       return Alert.alert("Rendimento", "Informe a porcentagem do CDI ou escolha outra opção.");
     }
