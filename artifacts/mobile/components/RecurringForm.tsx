@@ -15,6 +15,7 @@ type Initial = {
   description: string;
   dayOfMonth: number;
   active: boolean;
+  isSubscription: boolean;
 };
 
 type Props = {
@@ -27,6 +28,7 @@ type Props = {
     description: string;
     dayOfMonth: number;
     active: boolean;
+    isSubscription: boolean;
   }) => Promise<void> | void;
   onDelete?: () => Promise<void> | void;
 };
@@ -41,6 +43,7 @@ export function RecurringForm({ initial, submitLabel, onSubmit, onDelete }: Prop
   const [description, setDescription] = useState<string>(initial?.description ?? "");
   const [dayOfMonth, setDayOfMonth] = useState<number>(initial?.dayOfMonth ?? new Date().getDate());
   const [active, setActive] = useState<boolean>(initial?.active ?? true);
+  const [isSubscription, setIsSubscription] = useState<boolean>(initial?.isSubscription ?? false);
 
   const filteredCats = useMemo(() => categories.filter((c) => c.type === type), [categories, type]);
 
@@ -65,6 +68,7 @@ export function RecurringForm({ initial, submitLabel, onSubmit, onDelete }: Prop
       description: description.trim(),
       dayOfMonth,
       active,
+      isSubscription,
     });
   };
 
@@ -172,6 +176,31 @@ export function RecurringForm({ initial, submitLabel, onSubmit, onDelete }: Prop
         </Pressable>
       </View>
 
+      {type === "expense" && (
+        <View style={[styles.activeRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.activeTitle, { color: colors.foreground }]}>É uma assinatura?</Text>
+            <Text style={[styles.activeSub, { color: colors.mutedForeground }]}>
+              Ex: Netflix, Spotify, iCloud, Academia
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => setIsSubscription(!isSubscription)}
+            style={[
+              styles.switchTrack,
+              { backgroundColor: isSubscription ? colors.primary : colors.border },
+            ]}
+          >
+            <View
+              style={[
+                styles.switchThumb,
+                { backgroundColor: colors.background, transform: [{ translateX: isSubscription ? 22 : 2 }] },
+              ]}
+            />
+          </Pressable>
+        </View>
+      )}
+
       <Pressable
         onPress={handleSubmit}
         style={({ pressed }) => [
@@ -267,6 +296,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     gap: 12,
+    marginTop: 8,
   },
   activeTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   activeSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },

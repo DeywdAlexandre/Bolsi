@@ -16,7 +16,7 @@ import { useColors } from "@/hooks/useColors";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
-type TabName = "index" | "loans" | "recurring" | "vehicles";
+type TabName = "index" | "loans" | "goals" | "vehicles";
 
 const META: Record<
   TabName,
@@ -24,7 +24,7 @@ const META: Record<
 > = {
   index: { title: "Início", icon: "home-outline", iconActive: "home" },
   loans: { title: "Empréstimos", icon: "briefcase-outline", iconActive: "briefcase" },
-  recurring: { title: "Fixos", icon: "repeat-outline", iconActive: "repeat" },
+  goals: { title: "Metas", icon: "flag-outline", iconActive: "flag" },
   vehicles: {
     title: "Veículos",
     icon: "car-sport-outline",
@@ -33,7 +33,7 @@ const META: Record<
 };
 
 const LEFT_ORDER: TabName[] = ["index", "vehicles"];
-const RIGHT_ORDER: TabName[] = ["recurring", "loans"];
+const RIGHT_ORDER: TabName[] = ["goals", "loans"];
 
 export default function TabLayout() {
   return (
@@ -43,7 +43,7 @@ export default function TabLayout() {
     >
       <Tabs.Screen name="index" />
       <Tabs.Screen name="vehicles" />
-      <Tabs.Screen name="recurring" />
+      <Tabs.Screen name="goals" />
       <Tabs.Screen name="loans" />
     </Tabs>
   );

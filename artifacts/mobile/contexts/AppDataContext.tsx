@@ -14,10 +14,14 @@ import type {
   LoanContact,
   Loan,
   LoanPayment,
+  Goal,
+  GoalDeposit,
 } from "@/lib/types";
 
 type AppDataContextValue = {
   ready: boolean;
+  userName: string;
+  setUserName: (name: string) => Promise<void>;
   transactions: Transaction[];
   recurring: Recurring[];
   categories: Category[];
@@ -28,7 +32,7 @@ type AppDataContextValue = {
   addTransactionRaw: (tx: Transaction) => Promise<void>;
   updateTransaction: (id: string, patch: Partial<Transaction>) => Promise<void>;
   removeTransaction: (id: string) => Promise<void>;
-  addRecurring: (input: Omit<Recurring, "id" | "createdAt" | "active"> & { active?: boolean }) => Promise<Recurring>;
+  addRecurring: (input: Omit<Recurring, "id" | "createdAt" | "active"> & { active?: boolean; isSubscription?: boolean }) => Promise<Recurring>;
   addRecurringRaw: (r: Recurring) => Promise<void>;
   updateRecurring: (id: string, patch: Partial<Recurring>) => Promise<void>;
   removeRecurring: (id: string) => Promise<void>;
@@ -44,7 +48,7 @@ type AppDataContextValue = {
   updateOilChange: (id: string, patch: Partial<OilChange>) => Promise<void>;
   removeOilChange: (id: string) => Promise<void>;
   loanContacts: LoanContact[];
-  loans: Loan[ ];
+  loans: Loan[];
   loanPayments: LoanPayment[];
   addLoanContact: (input: Omit<LoanContact, "id" | "createdAt">) => Promise<LoanContact>;
   updateLoanContact: (id: string, patch: Partial<LoanContact>) => Promise<void>;
@@ -54,6 +58,12 @@ type AppDataContextValue = {
   removeLoan: (id: string) => Promise<void>;
   addLoanPayment: (input: Omit<LoanPayment, "id" | "createdAt">) => Promise<LoanPayment>;
   removeLoanPayment: (id: string) => Promise<void>;
+  goals: Goal[];
+  goalDeposits: GoalDeposit[];
+  addGoal: (input: Omit<Goal, "id" | "createdAt" | "currentAmount">) => Promise<Goal>;
+  updateGoal: (id: string, patch: Partial<Goal>) => Promise<void>;
+  removeGoal: (id: string) => Promise<void>;
+  addGoalDeposit: (input: Omit<GoalDeposit, "id" | "createdAt" | "type"> & { type?: GoalDeposit["type"]; createTransaction?: boolean }) => Promise<GoalDeposit>;
   resetAll: () => Promise<void>;
 };
 
@@ -61,6 +71,7 @@ const AppDataContext = createContext<AppDataContextValue | null>(null);
 
 export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
+  const [userName, setUserNameState] = useState("");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [recurring, setRecurring] = useState<Recurring[]>([]);
   const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
@@ -70,6 +81,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [loanContacts, setLoanContacts] = useState<LoanContact[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [loanPayments, setLoanPayments] = useState<LoanPayment[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [goalDeposits, setGoalDeposits] = useState<GoalDeposit[]>([]);
 
   // Load
   useEffect(() => {
@@ -85,11 +98,13 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         loadJson<LoanContact[]>(STORAGE_KEYS.loanContacts, []),
         loadJson<Loan[]>(STORAGE_KEYS.loans, []),
         loadJson<LoanPayment[]>(STORAGE_KEYS.loanPayments, []),
+        loadJson<string>(STORAGE_KEYS.userName, ""),
+        loadJson<Goal[]>(STORAGE_KEYS.goals, []),
+        loadJson<GoalDeposit[]>(STORAGE_KEYS.goalDeposits, []),
       ]);
       if (cancelled) return;
-      const [tx, rc, cats, veh, fue, oil, lc, l, lp] = results;
+      const [tx, rc, cats, veh, fue, oil, lc, l, lp, name, g, gd] = results;
       
-      // Merge com categorias padrões caso falte alguma (como as novas de empréstimo)
       const mergedCats = [...cats];
       DEFAULT_CATEGORIES.forEach(def => {
         if (!mergedCats.find(c => c.id === def.id)) {
@@ -106,6 +121,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       setLoanContacts(lc);
       setLoans(l);
       setLoanPayments(lp);
+      setUserNameState(name);
+      setGoals(g);
+      setGoalDeposits(gd);
       setReady(true);
     })();
     return () => {
@@ -113,7 +131,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Apply recurring transactions for current month
+  // Recurring transactions logic
   useEffect(() => {
     if (!ready) return;
     const now = new Date();
@@ -154,9 +172,56 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       void saveJson(STORAGE_KEYS.transactions, allTx);
       void saveJson(STORAGE_KEYS.recurring, updatedRecurring);
     }
-    // run once when ready
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
+
+  // GOALS AUTOMATIC INTEREST LOGIC
+  useEffect(() => {
+    if (!ready) return;
+    const now = new Date();
+    const today = now.toISOString();
+
+    let changed = false;
+    const newDeposits: GoalDeposit[] = [];
+    const updatedGoals = goals.map((g) => {
+      if (!g.isYielding || g.currentAmount <= 0) return g;
+      
+      const lastAccrual = g.lastInterestAccrual ? new Date(g.lastInterestAccrual) : new Date(g.createdAt);
+      const diffMs = now.getTime() - lastAccrual.getTime();
+      const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+      if (diffDays >= 30) {
+        const yieldAmount = g.currentAmount * (g.estimatedYield / 100);
+        newDeposits.push({
+          id: "gd_" + genId(),
+          goalId: g.id,
+          amount: yieldAmount,
+          type: "yield",
+          date: today,
+          createdAt: today,
+        });
+        changed = true;
+        return { 
+          ...g, 
+          currentAmount: g.currentAmount + yieldAmount,
+          lastInterestAccrual: today 
+        };
+      }
+      return g;
+    });
+
+    if (changed) {
+      const allGD = [...newDeposits, ...goalDeposits];
+      setGoalDeposits(allGD);
+      setGoals(updatedGoals);
+      void saveJson(STORAGE_KEYS.goalDeposits, allGD);
+      void saveJson(STORAGE_KEYS.goals, updatedGoals);
+    }
+  }, [ready]);
+
+  const setUserName = useCallback(async (name: string) => {
+    setUserNameState(name);
+    await saveJson(STORAGE_KEYS.userName, name);
+  }, []);
 
   const addTransactionRaw = useCallback(async (tx: Transaction) => {
     setTransactions((prev) => {
@@ -204,10 +269,11 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addRecurring = useCallback(
-    async (input: Omit<Recurring, "id" | "createdAt" | "active"> & { active?: boolean }) => {
+    async (input: Omit<Recurring, "id" | "createdAt" | "active"> & { active?: boolean; isSubscription?: boolean }) => {
       const r: Recurring = {
         ...input,
         active: input.active ?? true,
+        isSubscription: input.isSubscription ?? false,
         id: genId(),
         createdAt: new Date().toISOString(),
       };
@@ -392,7 +458,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
   const removeLoan = useCallback(async (id: string) => {
     let initialTxId: string | undefined;
-
     setLoans((prev) => {
       const target = prev.find((l) => l.id === id);
       initialTxId = target?.initialTransactionId;
@@ -400,21 +465,13 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       void saveJson(STORAGE_KEYS.loans, next);
       return next;
     });
-
-    if (initialTxId) {
-      setTransactions((prev) => {
-        const next = prev.filter((t) => t.id !== initialTxId);
-        void saveJson(STORAGE_KEYS.transactions, next);
-        return next;
-      });
-    }
-
+    if (initialTxId) removeTransaction(initialTxId);
     setLoanPayments((prev) => {
       const next = prev.filter((p) => p.loanId !== id);
       void saveJson(STORAGE_KEYS.loanPayments, next);
       return next;
     });
-  }, []);
+  }, [removeTransaction]);
 
   const addLoanPayment = useCallback(async (input: Omit<LoanPayment, "id" | "createdAt">) => {
     const lp: LoanPayment = { ...input, id: "lp_" + genId(), createdAt: new Date().toISOString() };
@@ -428,7 +485,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
   const removeLoanPayment = useCallback(async (id: string) => {
     let txToRemoveId: string | undefined;
-
     setLoanPayments((prev) => {
       const target = prev.find((p) => p.id === id);
       txToRemoveId = target?.transactionId;
@@ -436,15 +492,82 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       void saveJson(STORAGE_KEYS.loanPayments, next);
       return next;
     });
+    if (txToRemoveId) removeTransaction(txToRemoveId);
+  }, [removeTransaction]);
 
-    if (txToRemoveId) {
-      setTransactions((prev) => {
-        const next = prev.filter((t) => t.id !== txToRemoveId);
-        void saveJson(STORAGE_KEYS.transactions, next);
-        return next;
-      });
-    }
+  // --- GOALS FUNCTIONS ---
+  const addGoal = useCallback(async (input: Omit<Goal, "id" | "createdAt" | "currentAmount">) => {
+    const g: Goal = { 
+      ...input, 
+      id: "goal_" + genId(), 
+      currentAmount: 0, 
+      createdAt: new Date().toISOString() 
+    };
+    setGoals((prev) => {
+      const next = [g, ...prev];
+      void saveJson(STORAGE_KEYS.goals, next);
+      return next;
+    });
+    return g;
   }, []);
+
+  const updateGoal = useCallback(async (id: string, patch: Partial<Goal>) => {
+    setGoals((prev) => {
+      const next = prev.map((g) => (g.id === id ? { ...g, ...patch } : g));
+      void saveJson(STORAGE_KEYS.goals, next);
+      return next;
+    });
+  }, []);
+
+  const removeGoal = useCallback(async (id: string) => {
+    setGoals((prev) => {
+      const next = prev.filter((g) => g.id !== id);
+      void saveJson(STORAGE_KEYS.goals, next);
+      return next;
+    });
+    setGoalDeposits((prev) => {
+      const next = prev.filter((d) => d.goalId !== id);
+      void saveJson(STORAGE_KEYS.goalDeposits, next);
+      return next;
+    });
+  }, []);
+
+  const addGoalDeposit = useCallback(async (input: Omit<GoalDeposit, "id" | "createdAt" | "type"> & { type?: GoalDeposit["type"]; createTransaction?: boolean }) => {
+    const { createTransaction, type, ...rest } = input;
+    let txId: string | undefined;
+
+    if (createTransaction) {
+      const tx = await addTransaction({
+        type: "expense",
+        amount: rest.amount,
+        categoryId: "savings",
+        description: `Depósito Meta: ${goals.find(g => g.id === rest.goalId)?.name || ""}`,
+        date: rest.date,
+      });
+      txId = tx.id;
+    }
+
+    const gd: GoalDeposit = {
+      ...rest,
+      id: "gd_" + genId(),
+      type: type || "deposit",
+      transactionId: txId,
+      createdAt: new Date().toISOString(),
+    };
+
+    setGoalDeposits((prev) => {
+      const next = [gd, ...prev];
+      void saveJson(STORAGE_KEYS.goalDeposits, next);
+      return next;
+    });
+
+    // Update goal currentAmount
+    updateGoal(rest.goalId, { 
+      currentAmount: (goals.find(g => g.id === rest.goalId)?.currentAmount || 0) + rest.amount 
+    });
+
+    return gd;
+  }, [addTransaction, goals, updateGoal]);
 
   const resetAll = useCallback(async () => {
     setTransactions([]);
@@ -456,6 +579,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     setLoanContacts([]);
     setLoans([]);
     setLoanPayments([]);
+    setGoals([]);
+    setGoalDeposits([]);
     await Promise.all([
       saveJson(STORAGE_KEYS.transactions, []),
       saveJson(STORAGE_KEYS.recurring, []),
@@ -466,15 +591,16 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       saveJson(STORAGE_KEYS.loanContacts, []),
       saveJson(STORAGE_KEYS.loans, []),
       saveJson(STORAGE_KEYS.loanPayments, []),
+      saveJson(STORAGE_KEYS.goals, []),
+      saveJson(STORAGE_KEYS.goalDeposits, []),
     ]);
   }, []);
-
-  // unused fallback to silence linter
-  void todayIso;
 
   const value = useMemo<AppDataContextValue>(
     () => ({
       ready,
+      userName,
+      setUserName,
       transactions,
       recurring,
       categories,
@@ -511,60 +637,22 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       removeLoan,
       addLoanPayment,
       removeLoanPayment,
+      goals,
+      goalDeposits,
+      addGoal,
+      updateGoal,
+      removeGoal,
+      addGoalDeposit,
       resetAll,
     }),
-    [
-      ready,
-      transactions,
-      recurring,
-      categories,
-      vehicles,
-      fuelings,
-      oilChanges,
-      addTransaction,
-      addTransactionRaw,
-      updateTransaction,
-      removeTransaction,
-      addRecurring,
-      addRecurringRaw,
-      updateRecurring,
-      removeRecurring,
-      addCategory,
-      removeCategory,
-      addVehicle,
-      updateVehicle,
-      removeVehicle,
-      addFueling,
-      updateFueling,
-      removeFueling,
-      addOilChange,
-      updateOilChange,
-      removeOilChange,
-      loanContacts,
-      loans,
-      loanPayments,
-      addLoanContact,
-      updateLoanContact,
-      removeLoanContact,
-      addLoan,
-      updateLoan,
-      removeLoan,
-      addLoanPayment,
-      removeLoanPayment,
-      resetAll,
-    ],
+    [ready, userName, transactions, recurring, categories, vehicles, fuelings, oilChanges, addTransaction, addTransactionRaw, updateTransaction, removeTransaction, addRecurring, addRecurringRaw, updateRecurring, removeRecurring, addCategory, removeCategory, addVehicle, updateVehicle, removeVehicle, addFueling, updateFueling, removeFueling, addOilChange, updateOilChange, removeOilChange, loanContacts, loans, loanPayments, addLoanContact, updateLoanContact, removeLoanContact, addLoan, updateLoan, removeLoan, addLoanPayment, removeLoanPayment, goals, goalDeposits, addGoal, updateGoal, removeGoal, addGoalDeposit, resetAll]
   );
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;
 }
 
-export function useAppData(): AppDataContextValue {
+export function useAppData() {
   const ctx = useContext(AppDataContext);
   if (!ctx) throw new Error("useAppData must be used within AppDataProvider");
   return ctx;
-}
-
-export function useCategoriesByType(type: TransactionType): Category[] {
-  const { categories } = useAppData();
-  return useMemo(() => categories.filter((c) => c.type === type), [categories, type]);
 }

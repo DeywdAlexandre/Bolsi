@@ -96,12 +96,11 @@ export default function NewLoanScreen() {
           initialTransactionId: initialTxId,
         });
 
-        // Se marcado, adiciona no extrato principal (valor total inicial)
         if (addToExtrat && initialTxId) {
           const isLend = direction === "lend";
           await addTransactionRaw({
             id: initialTxId,
-            type: isLend ? "expense" : "income", // Se eu emprestei, sai dinheiro. Se eu peguei, entra.
+            type: isLend ? "expense" : "income",
             amount: pAmount,
             categoryId: isLend ? "cat_loan_expense" : "cat_loan_income",
             date: date,
@@ -156,7 +155,6 @@ export default function NewLoanScreen() {
         </View>
 
         <View style={styles.form}>
-          {/* Direção */}
           <View style={styles.toggleRow}>
             <Pressable
               onPress={() => setDirection("lend")}
@@ -182,7 +180,6 @@ export default function NewLoanScreen() {
             </Pressable>
           </View>
 
-          {/* Data do Empréstimo */}
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.mutedForeground }]}>Data do Empréstimo</Text>
             <View style={[styles.dateRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -199,7 +196,6 @@ export default function NewLoanScreen() {
             </Text>
           </View>
 
-          {/* Tipo */}
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.mutedForeground }]}>Tipo de Cobrança</Text>
             <View style={styles.typeRow}>
@@ -230,7 +226,6 @@ export default function NewLoanScreen() {
             </View>
           </View>
 
-          {/* Campos */}
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.mutedForeground }]}>Descrição</Text>
             <TextInput
@@ -295,7 +290,6 @@ export default function NewLoanScreen() {
             </View>
           )}
 
-          {/* Preview */}
           <View style={[styles.previewCard, { backgroundColor: colors.primary + "10" }]}>
             <Text style={[styles.previewLabel, { color: colors.mutedForeground }]}>
               {direction === "lend" ? "Você receberá no total:" : "Você pagará no total:"}
@@ -303,6 +297,13 @@ export default function NewLoanScreen() {
             <Text style={[styles.previewValue, { color: direction === "lend" ? colors.income : colors.expense }]}>
               {formatCurrency(totalPreview)}
             </Text>
+            {type === "fixed_installments" && (
+              <View style={styles.installmentPreview}>
+                <Text style={[styles.previewSub, { color: colors.mutedForeground }]}>
+                  {installments}x de <Text style={{ color: colors.foreground, fontFamily: "Inter_700Bold" }}>{formatCurrency(totalPreview / (parseInt(installments) || 1))}</Text>
+                </Text>
+              </View>
+            )}
             <Text style={[styles.previewSub, { color: colors.mutedForeground }]}>
               Com base em {interest || "0"}% de juros
             </Text>
@@ -434,6 +435,10 @@ const styles = StyleSheet.create({
   previewSub: {
     fontSize: 12,
     fontFamily: "Inter_500Medium",
+  },
+  installmentPreview: {
+    marginTop: 4,
+    marginBottom: 2,
   },
   saveBtn: {
     height: 56,

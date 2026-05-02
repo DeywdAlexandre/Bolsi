@@ -23,8 +23,9 @@ import { Stack } from "expo-router";
 export default function SettingsScreen() {
   const colors = useColors();
   const { settings, apiKey, setApiKey, setModel, setThemeMode } = useSettings();
-  const { resetAll } = useAppData();
+  const { resetAll, userName, setUserName } = useAppData();
 
+  const [nameDraft, setNameDraft] = useState(userName);
   const [keyDraft, setKeyDraft] = useState<string>("");
   const [modelDraft, setModelDraft] = useState<string>(settings.model);
   const [showKey, setShowKey] = useState(false);
@@ -40,6 +41,7 @@ export default function SettingsScreen() {
   }, [settings.model]);
 
   const handleSave = async () => {
+    await setUserName(nameDraft.trim());
     await setApiKey(keyDraft.trim() || null);
     await setModel(modelDraft.trim());
     setSavedAt(Date.now());
@@ -113,6 +115,18 @@ export default function SettingsScreen() {
       style={{ backgroundColor: colors.background }}
       contentContainerStyle={styles.container}
     >
+      <Section title="Perfil">
+        <Field label="Seu Nome">
+          <TextInput
+            value={nameDraft}
+            onChangeText={setNameDraft}
+            placeholder="Como quer ser chamado?"
+            placeholderTextColor={colors.mutedForeground}
+            style={[styles.input, { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border }]}
+          />
+        </Field>
+      </Section>
+
       <Section title="Aparência">
         <View style={[styles.themeRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
           {(["system", "light", "dark"] as const).map((m) => {

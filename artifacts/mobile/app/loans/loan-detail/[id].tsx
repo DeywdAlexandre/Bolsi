@@ -50,13 +50,23 @@ export default function LoanDetailScreen() {
     const nextDue = new Date(lastDate);
     nextDue.setMonth(nextDue.getMonth() + 1);
     
+    // Lógica para Parcelas Fixas
+    const isFixed = loan.type === "fixed_installments";
+    const totalContracted = loan.principalAmount * (1 + loan.interestRate / 100);
+    const installmentValue = isFixed ? (totalContracted / (loan.installmentsCount || 1)) : 0;
+    const installmentsPaid = isFixed ? Math.floor((paidPrincipal + paidInterest) / (installmentValue || 1)) : 0;
+
     return {
       paidPrincipal,
       paidInterest,
       remainingPrincipal,
       currentMonthInterest,
-      totalRemaining: remainingPrincipal + currentMonthInterest,
+      totalRemaining: isFixed ? (totalContracted - (paidPrincipal + paidInterest)) : (remainingPrincipal + currentMonthInterest),
       nextDue: nextDue.toISOString(),
+      isFixed,
+      totalContracted,
+      installmentValue,
+      installmentsPaid,
     };
   }, [loan, payments]);
 
@@ -222,12 +232,56 @@ export default function LoanDetailScreen() {
             </View>
 
             <View style={[styles.totalBox, { backgroundColor: colors.muted }]}>
-              <Text style={[styles.totalLabel, { color: colors.mutedForeground }]}>Expectativa Total Próximo Mês</Text>
+              <Text style={[styles.totalLabel, { color: colors.mutedForeground }]}>
+                {currentStatus.isFixed ? "Saldo Restante Total" : "Expectativa Total Próximo Mês"}
+              </Text>
               <Text style={[styles.totalValue, { color: colors.foreground }]}>
                 {formatCurrency(currentStatus.totalRemaining)}
               </Text>
             </View>
           </View>
+
+          {/* Cronograma de Parcelas (Apenas para Fixed Installments) */}
+          {currentStatus.isFixed && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Cronograma de Parcelas</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.installmentsScroll}>
+                {Array.from({ length: loan.installmentsCount || 0 }).map((_, i) => {
+                  const installmentNum = i + 1;
+                  const isPaid = installmentNum <= currentStatus.installmentsPaid;
+                  const dueDate = new Date(loan.startDate);
+                  dueDate.setMonth(dueDate.getMonth() + installmentNum);
+
+                  return (
+                    <View 
+                      key={i} 
+                      style={[
+                        styles.installmentCard, 
+                        { 
+                          backgroundColor: isPaid ? colors.income + "10" : colors.card,
+                          borderColor: isPaid ? colors.income : colors.border
+                        }
+                      ]}
+                    >
+                      <View style={styles.installmentHeader}>
+                        <Text style={[styles.installmentNum, { color: colors.mutedForeground }]}>#{installmentNum}</Text>
+                        {isPaid && <Feather name="check-circle" size={12} color={colors.income} />}
+                      </View>
+                      <Text style={[styles.installmentValue, { color: colors.foreground }]}>
+                        {formatCurrency(currentStatus.installmentValue)}
+                      </Text>
+                      <Text style={[styles.installmentDate, { color: colors.mutedForeground }]}>
+                        {formatDate(dueDate.toISOString())}
+                      </Text>
+                      <Text style={[styles.installmentStatus, { color: isPaid ? colors.income : colors.accent }]}>
+                        {isPaid ? "Paga" : "Pendente"}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
 
           {/* Botão de Ação */}
           <Pressable
@@ -548,5 +602,39 @@ const styles = StyleSheet.create({
   confirmBtnText: {
     fontSize: 16,
     fontFamily: "Inter_700Bold",
+  },
+  installmentsScroll: {
+    gap: 12,
+    paddingRight: 20,
+  },
+  installmentCard: {
+    width: 130,
+    padding: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 4,
+  },
+  installmentHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  installmentNum: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+  },
+  installmentValue: {
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+  },
+  installmentDate: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+  },
+  installmentStatus: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    textTransform: "uppercase",
+    marginTop: 4,
   },
 });

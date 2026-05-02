@@ -1,7 +1,7 @@
 import React from "react";
 import { Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, Stack } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { EmptyState } from "@/components/EmptyState";
@@ -23,14 +23,20 @@ export default function RecurringScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Stack.Screen options={{ headerShown: false }} />
       <View style={[styles.headerBackground, { backgroundColor: colors.primary, height: topPad + 110 }]} />
       
       <View style={[styles.header, { paddingTop: topPad + 12 }]}>
-        <View>
-          <Text style={[styles.title, { color: colors.primaryForeground }]}>Fixos</Text>
-          <Text style={[styles.subtitle, { color: colors.primaryForeground + "cc" }]}>
-            Lançamentos mensais automáticos
-          </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+          <Pressable onPress={() => router.back()} style={styles.backBtn}>
+            <Feather name="arrow-left" size={24} color={colors.primaryForeground} />
+          </Pressable>
+          <View>
+            <Text style={[styles.title, { color: colors.primaryForeground }]}>Fixos</Text>
+            <Text style={[styles.subtitle, { color: colors.primaryForeground + "cc" }]}>
+              Lançamentos mensais automáticos
+            </Text>
+          </View>
         </View>
         <Pressable
           onPress={() => router.push("/recurring/new")}
@@ -130,9 +136,16 @@ function RecurringRow({
         size={42}
       />
       <View style={styles.rowMiddle}>
-        <Text style={[styles.rowTitle, { color: colors.foreground }]} numberOfLines={1}>
-          {recurring.description || category?.name || "Recorrente"}
-        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Text style={[styles.rowTitle, { color: colors.foreground }]} numberOfLines={1}>
+            {recurring.description || category?.name || "Recorrente"}
+          </Text>
+          {recurring.isSubscription && (
+            <View style={[styles.assinBadge, { backgroundColor: colors.primary + "15" }]}>
+              <Text style={[styles.assinBadgeText, { color: colors.primary }]}>ASSIN</Text>
+            </View>
+          )}
+        </View>
         <Text style={[styles.rowSub, { color: colors.mutedForeground }]} numberOfLines={1}>
           Todo dia {recurring.dayOfMonth} · {category?.name ?? "—"}
         </Text>
@@ -146,6 +159,11 @@ function RecurringRow({
         >
           {isIncome ? "+" : "-"} {formatCurrency(recurring.amount)}
         </Text>
+        {recurring.isSubscription && (
+          <Text style={[styles.annualCost, { color: colors.mutedForeground }]}>
+            {formatCurrency(recurring.amount * 12)}/ano
+          </Text>
+        )}
         <Switch
           value={recurring.active}
           onValueChange={onToggle}
@@ -173,6 +191,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: -10,
   },
   title: {
     fontSize: 26,
@@ -229,5 +255,19 @@ const styles = StyleSheet.create({
   rowAmount: {
     fontSize: 14,
     fontFamily: "Inter_700Bold",
+  },
+  assinBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  assinBadgeText: {
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+  },
+  annualCost: {
+    fontSize: 10,
+    fontFamily: "Inter_500Medium",
+    marginTop: -2,
   },
 });

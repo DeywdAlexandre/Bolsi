@@ -28,9 +28,42 @@ export type Recurring = {
   description: string;
   dayOfMonth: number;
   active: boolean;
+  isSubscription?: boolean;
   lastApplied?: string;
   createdAt: string;
 };
+
+// --- NOVOS TIPOS PARA METAS ---
+export type GoalType = "target_value" | "monthly_habit";
+
+export type Goal = {
+  id: string;
+  name: string;
+  type: GoalType;
+  targetAmount?: number;
+  monthlyAmount?: number;
+  targetDate?: string; // ISO
+  currentAmount: number;
+  isYielding: boolean;
+  estimatedYield: number; // Porcentagem mensal (ex: 1.0)
+  icon: string;
+  color: string;
+  lastInterestAccrual?: string; // ISO
+  createdAt: string;
+};
+
+export type GoalDepositType = "deposit" | "yield";
+
+export type GoalDeposit = {
+  id: string;
+  goalId: string;
+  amount: number;
+  type: GoalDepositType;
+  date: string;
+  transactionId?: string;
+  createdAt: string;
+};
+// ------------------------------
 
 export type ThemeMode = "system" | "light" | "dark";
 

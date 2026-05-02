@@ -9,7 +9,7 @@ O **Bolso** é um assistente financeiro pessoal "Offline-First" com inteligênci
 - **Navegação**: Expo Router (File-based routing).
 - **Persistência**: AsyncStorage & SecureStore.
 - **IA**: Integrado com OpenRouter (Assistente Finn).
-- **Estilo**: Premium Minimalista (Dark Mode por padrão).
+- **Estilo**: Premium Minimalista (Mercado Pago Style / Dark Mode).
 - **Deploy**: Expo Updates (OTA Workflow).
 
 ---
@@ -19,74 +19,54 @@ O **Bolso** é um assistente financeiro pessoal "Offline-First" com inteligênci
 ### 1. Dashboard & Extrato
 - Resumo de Saldo, Entradas e Gastos.
 - Gráfico de gastos por categoria.
-- Lista de transações recentes com badges de identificação (fixo, empréstimo, etc).
-- **Novo**: Tela de Extrato Completo com filtro por período.
+- Lista de transações recentes com badges de identificação.
+- Filtro por período e visão detalhada de histórico.
 
 ### 2. Veículos
-- Gestão de múltiplos veículos.
-- Log de abastecimentos (cálculo automático de KM/L).
-- Controle de trocas de óleo com alertas de validade.
+- Gestão de múltiplos veículos, log de abastecimentos e controle de trocas de óleo.
 
-### 3. Empréstimos & CRM (Módulo Atual)
-- **Gestão de Pessoas**: Cadastro de contatos com Nome, Telefone e Endereço.
-- **Tipos de Empréstimo**: Suporte a Juros Mensais (renovação) e Parcelas Fixas (financiamento).
-- **Lógica Inteligente**:
-    - Abate automático (Juros primeiro, depois Principal).
-    - Atalho para pagamento de "Apenas Juros".
-    - Registro opcional no extrato principal.
-- **Trava de Segurança**: Impede a exclusão de contatos com saldo devedor/a receber pendente.
+### 3. Empréstimos & CRM
+- Gestão de contatos, juros mensais vs. parcelas fixas, e abates inteligentes.
 
-### 4. IA Finn
-- Conversa natural sobre finanças.
-- **Inserção Direta**: Adiciona transações e recorrências via chat.
-- **Integração com Empréstimos**: O Finn consegue consultar quem deve, quanto deve e registrar pagamentos apenas por voz/texto.
+### 4. Metas & Futuro (Novo 🚀)
+- **Simulador Inteligente**: Projeção com juros compostos baseada em CDI (customizável) ou Poupança.
+- **Modos de Meta**: Valor Alvo (sonhos com prazo) ou Hábito Mensal (investimento recorrente).
+- **Rendimento Automático**: O app aplica juros mensalmente sobre o saldo das metas de forma autônoma.
+- **Visão de Futuro**: Projeções visuais para 1, 2, 5 e 10 anos.
+- **Gestão de Aportes**: Registro de depósitos manuais com integração opcional ao extrato de gastos.
+
+### 5. Gestão de Assinaturas (Recorrências)
+- Marcação de gastos fixos como "Assinatura".
+- Cálculo automático de **Custo Anual** para conscientização financeira.
+- Badges `[ASSIN]` no Dashboard e lista de Fixos.
+
+### 6. IA Finn
+- Inserção de dados via chat e consulta inteligente de empréstimos e status financeiro.
 
 ---
 
-## 📈 Log de Atualizações Recentes (01/05/2026)
+## 📈 Log de Atualizações Recentes (02/05/2026)
 
-- **Feature**: Lançamento do Módulo de Empréstimos completo.
-- **Feature**: Adição de campos de CRM (Telefone/Endereço) no perfil do contato.
-- **UX**: Implementação de badges no extrato para identificar transações de empréstimo.
-- **UX**: Atalho "Apenas Juros" no modal de pagamento.
-- **Fix**: Correção do erro de rota no "Ver tudo" do Dashboard (restauração do Histórico).
-- **Fix**: Compatibilidade de alertas de exclusão entre Web e Mobile (Platform OS check).
-- **IA**: Novas `tools` para o Finn gerenciar pagamentos e consultar dívidas.
-- **Deploy**: Primeira atualização via OTA realizada com sucesso para as branches `production` e `preview`.
+- **Feature**: Lançamento do módulo **Metas & Futuro** com simulador CDI.
+- **Feature**: Implementação do sistema de **Rendimento Automático** mensal para metas.
+- **Feature**: Evolução do módulo de Fixos para suporte a **Assinaturas** com projeção anual.
+- **UX**: Refatoração da Barra de Navegação (Tab Bar) - Meta agora é um módulo de primeira classe.
+- **UX**: Design de Detalhes de Meta imersivo e colorido de acordo com o objetivo.
+- **Math**: Fórmulas financeiras corrigidas para considerar PV (Saldo Atual) + PMT (Aportes) nas projeções.
 
 ---
 
 ## ⏳ Próximos Passos (Backlog)
 
 ### 🚀 Prioridade Máxima: Próximo Build Nativo
-- [ ] **EAS Build (Android/iOS)**: Gerar instaladores (.apk e .ipa) para testar o app em ambiente real.
-- [ ] **Proteção Biométrica**: Solicitar digital/face ID ao abrir o app (exige build nativo).
-- [ ] **Sistema de Alertas/Notificações**: Avisar sobre vencimentos e trocas de óleo (exige build nativo).
+- [ ] **EAS Build (Android/iOS)**: Gerar instaladores reais.
+- [ ] **Proteção Biométrica**: Digital/Face ID ao abrir o app.
+- [ ] **Notificações Push**: Alertas de vencimento de assinaturas e metas.
 
 ### 📡 Para Atualização via OTA (Apenas código)
-- [ ] **Módulo de Metas**: Criar interface de objetivos e sonhos financeiros (Próximo grande módulo).
-- [ ] **Backup JSON**: Implementar a lógica real dos botões de exportação e importação.
-- [ ] **Relatórios**: Gerar extratos detalhados em PDF.
+- [ ] **Backup JSON**: Implementar exportação e importação real de dados.
+- [ ] **Relatórios PDF**: Gerar extratos mensais profissionais.
+- [ ] **Gamificação**: Medalhas por metas alcançadas ou meses de economia.
 
 ---
-
-## 💾 Estratégia de Backup e Sincronização (Planejado)
-
-Para garantir a segurança dos dados e a persistência em caso de troca de dispositivo:
-
-### Fase 1: Exportação/Importação Manual (JSON)
-- **Exportar**: Gerar um arquivo `bolso_backup_YYYYMMDD.json` com o dump completo do `AsyncStorage`.
-- **Importar**: Leitura do arquivo JSON com validação de esquema antes de sobrescrever o banco local.
-- **Partilha**: Uso do `expo-sharing` para permitir enviar o arquivo para WhatsApp, E-mail ou Nuvem.
-
-### Fase 2: Sincronização com Google Drive (Premium)
-- **Integração OAuth 2.0**: Autenticação via Google para salvar na pasta oculta `appData`.
-- **Sobrescrita Inteligente**: Opção para manter apenas o backup mais recente ou as últimas 3 versões.
-- **Sincronização Automática**: Backup disparado após grandes alterações ou ao fechar o app.
-
-### 🛡️ Compatibilidade de Versões (Data Migration)
-- **Versionamento**: Cada backup terá um campo `version`.
-- **Migradores**: Lógica interna no app para "traduzir" dados de versões antigas para novos formatos de módulos futuros, garantindo que o app nunca trave ao restaurar dados do passado.
-
----
-*Atualizado por Antigravity em 01/05/2026 - Versão Premium 1.1*
+*Atualizado por Antigravity em 02/05/2026 - Versão Premium 1.2*

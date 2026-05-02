@@ -1,5 +1,13 @@
 import React, { useMemo, useState } from "react";
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Animated,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -11,11 +19,14 @@ import { SummaryCards } from "@/components/SummaryCards";
 import { TransactionItem } from "@/components/TransactionItem";
 import { useAppData } from "@/contexts/AppDataContext";
 import { useColors } from "@/hooks/useColors";
+import { formatCurrency } from "@/lib/format";
 
 export default function DashboardScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { transactions, categories, ready } = useAppData();
+  const { transactions, categories, recurring, userName, ready } = useAppData();
+  
+  const scrollY = React.useRef(new Animated.Value(0)).current;
 
   const now = new Date();
   const [period, setPeriod] = useState<Period>({
@@ -26,12 +37,10 @@ export default function DashboardScreen() {
 
   const filtered = useMemo(() => {
     return transactions.filter((t) => {
-      // t.date costuma ser YYYY-MM-DD ou ISO completo
       const datePart = t.date.split("T")[0];
       const [year, month] = datePart.split("-").map(Number);
       
       if (period.mode === "month") {
-        // month no split é 1-indexed (1=Jan), no period.month costuma ser 0-indexed
         return (month - 1) === period.month && year === period.year;
       }
       return year === period.year;
@@ -61,6 +70,14 @@ export default function DashboardScreen() {
     };
   }, [filtered, transactions]);
 
+  const upcoming = useMemo(() => {
+    const today = new Date().getDate();
+    return recurring
+      .filter((r) => r.active && r.dayOfMonth >= today)
+      .sort((a, b) => a.dayOfMonth - b.dayOfMonth)
+      .slice(0, 3);
+  }, [recurring]);
+
   const recent = useMemo(() => {
     return [...filtered]
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -68,39 +85,104 @@ export default function DashboardScreen() {
   }, [filtered]);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const headerMaxHeight = topPad + 220;
+  const headerMinHeight = topPad + 65;
+
+  const headerHeight = scrollY.interpolate({
+    inputRange: [0, 120],
+    outputRange: [headerMaxHeight, headerMinHeight],
+    extrapolate: "clamp",
+  });
+
+  const contentOpacity = scrollY.interpolate({
+    inputRange: [0, 80],
+    outputRange: [1, 0],
+    extrapolate: "clamp",
+  });
+
+  const minimalHeaderOpacity = scrollY.interpolate({
+    inputRange: [80, 120],
+    outputRange: [0, 1],
+    extrapolate: "clamp",
+  });
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.headerBackground, { backgroundColor: colors.primary, height: topPad + 220 }]} />
+      <Animated.View 
+        style={[
+          styles.headerBackground, 
+          { 
+            backgroundColor: colors.primary, 
+            height: headerHeight,
+            zIndex: 10,
+          }
+        ]}
+      >
+        <Animated.View 
+          style={[
+            styles.minimalHeader, 
+            { 
+              paddingTop: topPad + 10,
+              opacity: minimalHeaderOpacity,
+            }
+          ]}
+        >
+          <View style={styles.minimalContent}>
+            <View>
+              <Text style={[styles.minimalBrand, { color: colors.primaryForeground }]}>Bolso</Text>
+              <Text style={[styles.minimalBalance, { color: colors.primaryForeground + "cc" }]}>
+                {formatCurrency(totals.globalBalance)}
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => router.push("/settings")}
+              style={styles.minimalSettingsBtn}
+            >
+              <Feather name="settings" size={18} color={colors.primaryForeground} />
+            </Pressable>
+          </View>
+        </Animated.View>
+
+        <Animated.View style={[styles.headerContent, { paddingTop: topPad + 10, opacity: contentOpacity }]}>
+          <View style={styles.headerRow}>
+            <View>
+              <Text style={[styles.greeting, { color: colors.primaryForeground + "cc" }]}>
+                {userName ? "Olá," : "Bem-vindo!"}
+              </Text>
+              <Text style={[styles.brand, { color: colors.primaryForeground }]}>
+                {userName || "ao Bolso"}
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => router.push("/settings")}
+              hitSlop={10}
+              style={({ pressed }) => [
+                styles.headerBtn,
+                { backgroundColor: colors.primaryForeground + "22", opacity: pressed ? 0.7 : 1 },
+              ]}
+            >
+              <Feather name="settings" size={18} color={colors.primaryForeground} />
+            </Pressable>
+          </View>
+
+          <View style={styles.periodContainer}>
+            <PeriodSelector period={period} onChange={setPeriod} isDarkBackground={true} />
+          </View>
+        </Animated.View>
+      </Animated.View>
       
-      <ScrollView
+      <Animated.ScrollView
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: false }
+        )}
+        scrollEventThrottle={16}
         contentContainerStyle={[
           styles.scroll,
-          { paddingTop: topPad + 10, paddingBottom: 120 },
+          { paddingTop: headerMaxHeight + 10, paddingBottom: 120 },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={[styles.greeting, { color: colors.primaryForeground + "cc" }]}>Olá,</Text>
-            <Text style={[styles.brand, { color: colors.primaryForeground }]}>Deywd</Text>
-          </View>
-          <Pressable
-            onPress={() => router.push("/settings")}
-            hitSlop={10}
-            style={({ pressed }) => [
-              styles.headerBtn,
-              { backgroundColor: colors.primaryForeground + "22", opacity: pressed ? 0.7 : 1 },
-            ]}
-          >
-            <Feather name="settings" size={18} color={colors.primaryForeground} />
-          </Pressable>
-        </View>
-
-        <View style={styles.periodContainer}>
-          <PeriodSelector period={period} onChange={setPeriod} isDarkBackground={true} />
-        </View>
-
         <View style={styles.summaryContainer}>
           <SummaryCards 
             income={totals.income} 
@@ -139,7 +221,64 @@ export default function DashboardScreen() {
             <Feather name="arrow-up-right" size={18} color={colors.expense} />
             <Text style={[styles.actionText, { color: colors.expense }]}>Gasto</Text>
           </Pressable>
+          <Pressable
+            onPress={() => router.push("/recurring")}
+            style={({ pressed }) => [
+              styles.actionBtn,
+              {
+                backgroundColor: colors.primary + "10",
+                borderColor: colors.primary + "33",
+                opacity: pressed ? 0.7 : 1,
+              },
+            ]}
+          >
+            <Feather name="repeat" size={18} color={colors.primary} />
+            <Text style={[styles.actionText, { color: colors.primary }]}>Fixos</Text>
+          </Pressable>
         </View>
+
+        {ready && upcoming.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Próximos Compromissos</Text>
+              <Pressable onPress={() => router.push("/recurring")}>
+                <Text style={[styles.linkText, { color: colors.primary }]}>Ver todos</Text>
+              </Pressable>
+            </View>
+            <View style={[styles.cardWrap, { backgroundColor: colors.card, borderColor: colors.border, paddingVertical: 10 }]}>
+              {upcoming.map((r, idx) => {
+                const cat = categories.find((c) => c.id === r.categoryId);
+                return (
+                  <View key={`up-${r.id}`}>
+                    <Pressable 
+                      onPress={() => router.push({ pathname: "/recurring/[id]", params: { id: r.id } })}
+                      style={styles.upcomingItem}
+                    >
+                      <View style={[styles.dayBadge, { backgroundColor: colors.primary + "15" }]}>
+                        <Text style={[styles.dayText, { color: colors.primary }]}>{r.dayOfMonth}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                          <Text style={[styles.upcomingDesc, { color: colors.foreground }]}>{r.description || cat?.name}</Text>
+                          {r.isSubscription && (
+                            <View style={[styles.assinBadge, { backgroundColor: colors.primary + "15" }]}>
+                              <Text style={[styles.assinBadgeText, { color: colors.primary }]}>ASSIN</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={[styles.upcomingCat, { color: colors.mutedForeground }]}>{cat?.name}</Text>
+                      </View>
+                      <Text style={[styles.upcomingAmount, { color: r.type === "income" ? colors.income : colors.foreground }]}>
+                        {formatCurrency(r.amount)}
+                      </Text>
+                    </Pressable>
+                    {idx < upcoming.length - 1 && <View style={[styles.divider, { backgroundColor: colors.border, marginVertical: 8 }]} />}
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        )}
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -204,7 +343,7 @@ export default function DashboardScreen() {
             </View>
           )}
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
     </View>
   );
 }
@@ -218,8 +357,9 @@ const styles = StyleSheet.create({
     right: 0,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
+    overflow: "hidden",
   },
-  scroll: {
+  headerContent: {
     paddingHorizontal: 20,
   },
   headerRow: {
@@ -252,12 +392,40 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 16,
     zIndex: 1,
-    // Sombra sutil para o efeito de flutuação
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 5,
+  },
+  minimalHeader: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 20,
+    zIndex: 20,
+  },
+  minimalContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  minimalBrand: {
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+  },
+  minimalBalance: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    marginTop: -2,
+  },
+  minimalSettingsBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
   },
   section: {
     marginTop: 10,
@@ -310,5 +478,46 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     marginHorizontal: 16,
+  },
+  upcomingItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    gap: 12,
+  },
+  dayBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dayText: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+  },
+  upcomingDesc: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  upcomingCat: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+  },
+  upcomingAmount: {
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+  },
+  assinBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  assinBadgeText: {
+    fontSize: 8,
+    fontFamily: "Inter_700Bold",
+  },
+  scroll: {
+    paddingHorizontal: 20,
   },
 });
