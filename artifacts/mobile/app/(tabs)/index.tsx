@@ -47,7 +47,7 @@ export default function DashboardScreen() {
   const recentTransactions = useMemo(() => {
     return [...transactions]
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 5);
+      .slice(0, 8); // Aumentado um pouco para preencher o espaço
   }, [transactions]);
 
   const onRefresh = React.useCallback(() => {
@@ -91,7 +91,7 @@ export default function DashboardScreen() {
           <View>
             <View style={styles.balanceHeader}>
               <Text style={[styles.balanceLabel, { color: "#fff" }]}>
-                Saldo Disponível
+                Saldo em Conta
               </Text>
               <Pressable onPress={() => setShowBalance(!showBalance)}>
                 <Feather
@@ -115,7 +115,6 @@ export default function DashboardScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Widget de Patrimônio Guardado (Metas) */}
         <View style={styles.quickAccess}>
           <Pressable 
             onPress={() => router.push("/(tabs)/goals")}
@@ -125,7 +124,7 @@ export default function DashboardScreen() {
               <Feather name="flag" size={20} color={colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.savedLabel, { color: colors.mutedForeground }]}>Total Guardado</Text>
+              <Text style={[styles.savedLabel, { color: colors.mutedForeground }]}>Patrimônio Guardado</Text>
               <Text style={[styles.savedValue, { color: colors.foreground }]}>
                 {showBalance ? formatCurrency(stats.saved) : "••••••"}
               </Text>
@@ -150,11 +149,7 @@ export default function DashboardScreen() {
             label="Fixos"
             onPress={() => router.push("/recurring")}
           />
-          <Shortcut
-            icon="briefcase"
-            label="Emprést."
-            onPress={() => router.push("/(tabs)/loans")}
-          />
+          {/* Empréstimos removido daqui conforme solicitado */}
         </View>
 
         <View style={styles.section}>
@@ -177,33 +172,11 @@ export default function DashboardScreen() {
               <Text
                 style={[styles.emptyText, { color: colors.mutedForeground }]}
               >
-                Nenhuma transação este mês.
+                Nenhuma transação registrada.
               </Text>
             )}
           </View>
         </View>
-
-        {/* Preview de Metas em Destaque */}
-        {goals.length > 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 12, paddingHorizontal: 20 }]}>
-              Meus Sonhos
-            </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
-              {goals.slice(0, 3).map(goal => (
-                <Pressable 
-                  key={goal.id}
-                  onPress={() => router.push({ pathname: "/goals/[id]", params: { id: goal.id } })}
-                  style={[styles.goalPreview, { backgroundColor: colors.card, borderColor: colors.border }]}
-                >
-                  <Text style={{ fontSize: 24, marginBottom: 8 }}>{goal.icon}</Text>
-                  <Text style={[styles.goalPreviewName, { color: colors.foreground }]} numberOfLines={1}>{goal.name}</Text>
-                  <Text style={[styles.goalPreviewAmount, { color: colors.primary }]}>{formatCurrency(goal.currentAmount)}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-          </View>
-        )}
       </ScrollView>
 
       <Pressable
@@ -299,7 +272,7 @@ const styles = StyleSheet.create({
   savedValue: { fontSize: 18, fontFamily: "Inter_700Bold", marginTop: 2 },
   shortcuts: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "space-around", // Mudado para centralizar melhor os 3 itens
     paddingHorizontal: 20,
     marginBottom: 30,
   },
@@ -329,14 +302,6 @@ const styles = StyleSheet.create({
   seeMore: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   transactionsList: { paddingHorizontal: 20, gap: 12 },
   emptyText: { textAlign: "center", marginTop: 20, fontSize: 14 },
-  goalPreview: {
-    width: 130,
-    padding: 16,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  goalPreviewName: { fontSize: 13, fontFamily: "Inter_600SemiBold", marginBottom: 4 },
-  goalPreviewAmount: { fontSize: 14, fontFamily: "Inter_700Bold" },
   fab: {
     position: "absolute",
     right: 20,
