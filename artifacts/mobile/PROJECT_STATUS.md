@@ -10,63 +10,52 @@ O **Bolso** é um assistente financeiro pessoal "Offline-First" com inteligênci
 - **Persistência**: AsyncStorage & SecureStore.
 - **IA**: Integrado com OpenRouter (Assistente Finn).
 - **Estilo**: Premium Minimalista (Mercado Pago Style / Dark Mode).
-- **Deploy**: Expo Updates (OTA Workflow).
+- **Deploy**: Expo Updates (OTA Workflow) - Branch `preview` ativa.
 
 ---
 
 ## ✅ Módulos Implementados
 
-### 1. Dashboard & Extrato
-- Resumo de Saldo, Entradas e Gastos.
-- Gráfico de gastos por categoria.
-- Lista de transações recentes com badges de identificação.
-- Filtro por período e visão detalhada de histórico.
+### 1. Dashboard Inteligente (Evoluído 💎)
+- **Separação de Patrimônio**: Saldo Líquido separado do Patrimônio Guardado.
+- **Widget de Acúmulo**: Visualização clara do total investido em metas.
+- **Atalhos Otimizados**: Foco em Gasto, Ganho e Fixos para maior agilidade.
+- **Privacidade**: Ocultação de valores e metas individuais na tela inicial.
 
-### 2. Veículos
-- Gestão de múltiplos veículos, log de abastecimentos e controle de trocas de óleo.
+### 2. Metas & Futuro (Destaque 🚀)
+- **Simulador CDI/Poupança**: Projeções com juros compostos.
+- **Rendimento Automático**: O app gera depósitos de juros mensalmente de forma autônoma.
+- **Detalhamento de Jornada**: Distinção entre "Meus Aportes" e "Rendimentos do Banco".
 
-### 3. Empréstimos & CRM
-- Gestão de contatos, juros mensais vs. parcelas fixas, e abates inteligentes.
+### 3. Gestão de Assinaturas & Fixos
+- Suporte a recorrências com projeção de custo anual.
 
-### 4. Metas & Futuro (Novo 🚀)
-- **Simulador Inteligente**: Projeção com juros compostos baseada em CDI (customizável) ou Poupança.
-- **Modos de Meta**: Valor Alvo (sonhos com prazo) ou Hábito Mensal (investimento recorrente).
-- **Rendimento Automático**: O app aplica juros mensalmente sobre o saldo das metas de forma autônoma.
-- **Visão de Futuro**: Projeções visuais para 1, 2, 5 e 10 anos.
-- **Gestão de Aportes**: Registro de depósitos manuais com integração opcional ao extrato de gastos.
-
-### 5. Gestão de Assinaturas (Recorrências)
-- Marcação de gastos fixos como "Assinatura".
-- Cálculo automático de **Custo Anual** para conscientização financeira.
-- Badges `[ASSIN]` no Dashboard e lista de Fixos.
-
-### 6. IA Finn
-- Inserção de dados via chat e consulta inteligente de empréstimos e status financeiro.
+### 4. Veículos & Empréstimos
+- Módulos completos de gestão de frota e CRM financeiro para dívidas e cobranças.
 
 ---
 
-## 📈 Log de Atualizações Recentes (02/05/2026)
+## 📈 Log de Atualizações (02/05/2026)
 
-- **Feature**: Lançamento do módulo **Metas & Futuro** com simulador CDI.
-- **Feature**: Implementação do sistema de **Rendimento Automático** mensal para metas.
-- **Feature**: Evolução do módulo de Fixos para suporte a **Assinaturas** com projeção anual.
-- **UX**: Refatoração da Barra de Navegação (Tab Bar) - Meta agora é um módulo de primeira classe.
-- **UX**: Design de Detalhes de Meta imersivo e colorido de acordo com o objetivo.
-- **Math**: Fórmulas financeiras corrigidas para considerar PV (Saldo Atual) + PMT (Aportes) nas projeções.
+- **Feature**: Módulo **Metas & Futuro** com rendimento automático mensal.
+- **Feature**: Sistema de **Assinaturas** com cálculo de custo anual.
+- **UX**: Refatoração do **Início** para uma visualização de patrimônio mais profissional e limpa.
+- **UX**: Header imersivo e design premium nas telas de detalhes.
+- **Fix**: Estabilização de tipos TypeScript no simulador financeiro.
+- **Deploy**: Publicação múltipla via OTA na branch `preview` para testes imediatos.
 
 ---
 
 ## ⏳ Próximos Passos (Backlog)
 
-### 🚀 Prioridade Máxima: Próximo Build Nativo
-- [ ] **EAS Build (Android/iOS)**: Gerar instaladores reais.
+### 🚀 Prioridade Máxima
+- [ ] **EAS Build (Android/iOS)**: Gerar instaladores reais para produção.
 - [ ] **Proteção Biométrica**: Digital/Face ID ao abrir o app.
-- [ ] **Notificações Push**: Alertas de vencimento de assinaturas e metas.
 
-### 📡 Para Atualização via OTA (Apenas código)
+### 📡 Evoluções via OTA
 - [ ] **Backup JSON**: Implementar exportação e importação real de dados.
 - [ ] **Relatórios PDF**: Gerar extratos mensais profissionais.
-- [ ] **Gamificação**: Medalhas por metas alcançadas ou meses de economia.
+- [ ] **Gamificação**: Medalhas por metas alcançadas.
 
 ---
-*Atualizado por Antigravity em 02/05/2026 - Versão Premium 1.2*
+*Atualizado por Antigravity em 02/05/2026 - Versão Premium 1.2.1 (Final Session)*
