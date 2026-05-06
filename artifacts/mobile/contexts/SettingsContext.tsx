@@ -12,12 +12,14 @@ type SettingsContextValue = {
   setApiKey: (value: string | null) => Promise<void>;
   setModel: (model: string) => Promise<void>;
   setThemeMode: (mode: "system" | "light" | "dark") => Promise<void>;
+  setBiometricsEnabled: (enabled: boolean) => Promise<void>;
 };
 
 const DEFAULT_SETTINGS: Settings = {
   model: DEFAULT_MODEL,
   currency: "BRL",
   themeMode: "system",
+  biometricsEnabled: false,
 };
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -70,9 +72,17 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const setBiometricsEnabled = useCallback(async (enabled: boolean) => {
+    setSettings((prev) => {
+      const next = { ...prev, biometricsEnabled: enabled };
+      void saveJson(STORAGE_KEYS.settings, next);
+      return next;
+    });
+  }, []);
+
   const value = useMemo<SettingsContextValue>(
-    () => ({ ready, settings, apiKey, setApiKey, setModel, setThemeMode }),
-    [ready, settings, apiKey, setApiKey, setModel, setThemeMode],
+    () => ({ ready, settings, apiKey, setApiKey, setModel, setThemeMode, setBiometricsEnabled }),
+    [ready, settings, apiKey, setApiKey, setModel, setThemeMode, setBiometricsEnabled],
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;

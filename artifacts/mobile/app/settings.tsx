@@ -18,12 +18,15 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { useColors } from "@/hooks/useColors";
 import { SUGGESTED_MODELS } from "@/lib/openrouter";
 
+import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system";
+import * as Sharing from "expo-sharing";
 import { Stack } from "expo-router";
 
 export default function SettingsScreen() {
   const colors = useColors();
-  const { settings, apiKey, setApiKey, setModel, setThemeMode } = useSettings();
-  const { resetAll, userName, setUserName } = useAppData();
+  const { settings, apiKey, setApiKey, setModel, setThemeMode, setBiometricsEnabled } = useSettings();
+  const { resetAll, userName, setUserName, exportData, importData } = useAppData();
 
   const [nameDraft, setNameDraft] = useState(userName);
   const [keyDraft, setKeyDraft] = useState<string>("");
@@ -31,6 +34,74 @@ export default function SettingsScreen() {
   const [showKey, setShowKey] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [isModelPickerOpen, setIsModelPickerOpen] = useState(false);
+
+  const handleExport = async () => {
+    try {
+      const json = await exportData();
+      const filename = `backup_bolso_${new Date().toISOString().split("T")[0]}.json`;
+
+      if (Platform.OS === "web") {
+        const blob = new Blob([json], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        link.click();
+        URL.revokeObjectURL(url);
+      } else {
+        const fileUri = `${FileSystem.documentDirectory}${filename}`;
+        await FileSystem.writeAsStringAsync(fileUri, json, { encoding: FileSystem.EncodingType.UTF8 });
+        
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(fileUri);
+        } else {
+          Alert.alert("Erro", "O compartilhamento não está disponível neste dispositivo.");
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      Alert.alert("Erro", "Não foi possível gerar o backup.");
+    }
+  };
+
+  const handleImport = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({ type: "application/json" });
+      if (result.canceled) return;
+
+      const file = result.assets[0];
+      let content = "";
+
+      if (Platform.OS === "web") {
+        const response = await fetch(file.uri);
+        content = await response.text();
+      } else {
+        content = await FileSystem.readAsStringAsync(file.uri);
+      }
+
+      const confirmMsg = "Isso irá SOBRESCREVER todos os seus dados atuais com os do arquivo de backup. Tem certeza?";
+      
+      const proceed = await new Promise((resolve) => {
+        if (Platform.OS === "web") {
+          resolve(window.confirm(confirmMsg));
+        } else {
+          Alert.alert("Confirmar Importação", confirmMsg, [
+            { text: "Cancelar", style: "cancel", onPress: () => resolve(false) },
+            { text: "Importar", style: "destructive", onPress: () => resolve(true) }
+          ]);
+        }
+      });
+
+      if (proceed) {
+        await importData(content);
+        Alert.alert("Sucesso", "Backup restaurado com sucesso! O app será reiniciado.");
+        setTimeout(() => router.replace("/(tabs)"), 1000);
+      }
+    } catch (err) {
+      console.error(err);
+      Alert.alert("Erro", "O arquivo selecionado não é um backup válido do Bolso.");
+    }
+  };
 
   useEffect(() => {
     setKeyDraft(apiKey ?? "");
@@ -157,6 +228,52 @@ export default function SettingsScreen() {
               </Pressable>
             );
           })}
+        </View>
+      </Section>
+
+      <Section title="Segurança">
+        <View style={[styles.row, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.rowIcon, { backgroundColor: colors.primary + "15" }]}>
+            <Feather name="shield" size={18} color={colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.rowTitle, { color: colors.foreground }]}>Proteção Biométrica</Text>
+            <Text style={[styles.rowSub, { color: colors.mutedForeground }]}>
+              Solicitar digital ou face ao abrir o app
+            </Text>
+          </View>
+          <View style={{ paddingRight: 4 }}>
+            <View 
+              style={{ 
+                width: 50, 
+                height: 28, 
+                borderRadius: 14, 
+                backgroundColor: settings.biometricsEnabled ? colors.primary : colors.muted,
+                padding: 2,
+                justifyContent: 'center',
+                alignItems: settings.biometricsEnabled ? 'flex-end' : 'flex-start'
+              }}
+            >
+              <Pressable
+                onPress={() => {
+                  const newState = !settings.biometricsEnabled;
+                  // No mobile, poderíamos validar antes de ativar
+                  setBiometricsEnabled(newState);
+                }}
+                style={{ 
+                  width: 24, 
+                  height: 24, 
+                  borderRadius: 12, 
+                  backgroundColor: "#FFF",
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 2,
+                  elevation: 2,
+                }}
+              />
+            </View>
+          </View>
         </View>
       </Section>
 
@@ -305,7 +422,7 @@ export default function SettingsScreen() {
         </Pressable>
 
         <Pressable
-          onPress={() => Alert.alert("Em breve", "O backup via arquivo JSON estará disponível na próxima versão.")}
+          onPress={handleExport}
           style={({ pressed }) => [
             styles.row,
             { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
@@ -324,7 +441,7 @@ export default function SettingsScreen() {
         </Pressable>
 
         <Pressable
-          onPress={() => Alert.alert("Em breve", "A importação de backup estará disponível na próxima versão.")}
+          onPress={handleImport}
           style={({ pressed }) => [
             styles.row,
             { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },

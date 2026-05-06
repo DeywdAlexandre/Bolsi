@@ -71,6 +71,7 @@ export type Settings = {
   model: string;
   currency: string;
   themeMode: ThemeMode;
+  biometricsEnabled?: boolean;
 };
 
 export type ChatRole = "user" | "assistant" | "system" | "tool";

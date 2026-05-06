@@ -1,8 +1,10 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { Platform } from "react-native";
 
 import { DEFAULT_CATEGORIES } from "@/lib/categories";
 import { genId, todayIso } from "@/lib/format";
-import { loadJson, saveJson, STORAGE_KEYS } from "@/lib/storage";
+import { saveJson, STORAGE_KEYS, loadJson } from "@/lib/storage";
+import { requestNotificationPermissions, scheduleLoanReminder, cancelAllNotifications } from "@/lib/notifications";
 import type {
   Category,
   Fueling,
@@ -65,7 +67,11 @@ type AppDataContextValue = {
   removeGoal: (id: string) => Promise<void>;
   addGoalDeposit: (input: Omit<GoalDeposit, "id" | "createdAt" | "type"> & { type?: GoalDeposit["type"]; createTransaction?: boolean }) => Promise<GoalDeposit>;
   resetAll: () => Promise<void>;
+  exportData: () => Promise<string>;
+  importData: (json: string) => Promise<void>;
 };
+
+const DATA_VERSION = 1;
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
 
@@ -217,6 +223,60 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       void saveJson(STORAGE_KEYS.goals, updatedGoals);
     }
   }, [ready]);
+
+  // NOTIFICATIONS SCHEDULING LOGIC
+  useEffect(() => {
+    if (!ready || Platform.OS === "web") return;
+
+    (async () => {
+      const granted = await requestNotificationPermissions();
+      if (!granted) return;
+
+      await cancelAllNotifications();
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      loans.forEach(async (loan) => {
+        if (loan.status !== "active") return;
+
+        const contact = loanContacts.find(c => c.id === loan.contactId);
+        const payments = loanPayments.filter(p => p.loanId === loan.id);
+        
+        let nextDueDate: Date | null = null;
+        let amountDue = 0;
+
+        if (loan.type === "fixed_installments") {
+          const totalContracted = loan.principalAmount * (1 + loan.interestRate / 100);
+          const installmentValue = totalContracted / (loan.installmentsCount || 1);
+          const paidTotal = payments.reduce((s, p) => s + p.amount, 0);
+          const installmentsPaid = Math.floor(paidTotal / (installmentValue - 0.01));
+
+          if (installmentsPaid < (loan.installmentsCount || 0)) {
+            const date = new Date(loan.startDate);
+            date.setMonth(date.getMonth() + installmentsPaid + 1);
+            nextDueDate = date;
+            amountDue = installmentValue;
+          }
+        } else {
+            const start = new Date(loan.startDate);
+            nextDueDate = new Date(today.getFullYear(), today.getMonth(), start.getDate());
+            const paidPrincipal = payments.reduce((s, p) => s + p.principalPaid, 0);
+            amountDue = ((loan.principalAmount - paidPrincipal) * loan.interestRate) / 100;
+        }
+
+        if (nextDueDate && amountDue > 0) {
+          await scheduleLoanReminder(
+            loan.id,
+            contact?.name || "Empréstimo",
+            loan.description,
+            amountDue,
+            nextDueDate.toISOString()
+          );
+        }
+      });
+    })();
+  }, [ready, loans, loanPayments, loanContacts]);
 
   const setUserName = useCallback(async (name: string) => {
     setUserNameState(name);
@@ -596,6 +656,81 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     ]);
   }, []);
 
+  const exportData = useCallback(async () => {
+    const payload = {
+      version: DATA_VERSION,
+      generated_at: new Date().toISOString(),
+      app: "Bolso",
+      payload: {
+        transactions,
+        recurring,
+        categories,
+        vehicles,
+        fuelings,
+        oilChanges,
+        loanContacts,
+        loans,
+        loanPayments,
+        goals,
+        goalDeposits,
+        userName,
+      }
+    };
+    return JSON.stringify(payload);
+  }, [transactions, recurring, categories, vehicles, fuelings, oilChanges, loanContacts, loans, loanPayments, goals, goalDeposits, userName]);
+
+  const importData = useCallback(async (json: string) => {
+    try {
+      const data = JSON.parse(json);
+      if (data.app !== "Bolso" || !data.version || !data.payload) {
+        throw new Error("Arquivo de backup inválido.");
+      }
+
+      if (data.version > DATA_VERSION) {
+        throw new Error(`Backup de uma versão superior (${data.version}). Por favor, atualize o app.`);
+      }
+
+      // No futuro, as migrações entrariam aqui:
+      // if (data.version < DATA_VERSION) { data.payload = migrate(data.payload, data.version); }
+
+      const p = data.payload;
+      
+      // Atualizar estados
+      setTransactions(p.transactions || []);
+      setRecurring(p.recurring || []);
+      setCategories(p.categories || DEFAULT_CATEGORIES);
+      setVehicles(p.vehicles || []);
+      setFuelings(p.fuelings || []);
+      setOilChanges(p.oilChanges || []);
+      setLoanContacts(p.loanContacts || []);
+      setLoans(p.loans || []);
+      setLoanPayments(p.loanPayments || []);
+      setGoals(p.goals || []);
+      setGoalDeposits(p.goalDeposits || []);
+      setUserNameState(p.userName || "");
+
+      // Salvar no Storage
+      await Promise.all([
+        saveJson(STORAGE_KEYS.transactions, p.transactions || []),
+        saveJson(STORAGE_KEYS.recurring, p.recurring || []),
+        saveJson(STORAGE_KEYS.categories, p.categories || DEFAULT_CATEGORIES),
+        saveJson(STORAGE_KEYS.vehicles, p.vehicles || []),
+        saveJson(STORAGE_KEYS.fuelings, p.fuelings || []),
+        saveJson(STORAGE_KEYS.oilChanges, p.oilChanges || []),
+        saveJson(STORAGE_KEYS.loanContacts, p.loanContacts || []),
+        saveJson(STORAGE_KEYS.loans, p.loans || []),
+        saveJson(STORAGE_KEYS.loanPayments, p.loanPayments || []),
+        saveJson(STORAGE_KEYS.goals, p.goals || []),
+        saveJson(STORAGE_KEYS.goalDeposits, p.goalDeposits || []),
+        saveJson(STORAGE_KEYS.userName, p.userName || ""),
+      ]);
+
+    } catch (err) {
+      console.error("Erro ao importar backup:", err);
+      throw err;
+    }
+  }, []);
+
   const value = useMemo<AppDataContextValue>(
     () => ({
       ready,
@@ -644,8 +779,10 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       removeGoal,
       addGoalDeposit,
       resetAll,
+      exportData,
+      importData,
     }),
-    [ready, userName, transactions, recurring, categories, vehicles, fuelings, oilChanges, addTransaction, addTransactionRaw, updateTransaction, removeTransaction, addRecurring, addRecurringRaw, updateRecurring, removeRecurring, addCategory, removeCategory, addVehicle, updateVehicle, removeVehicle, addFueling, updateFueling, removeFueling, addOilChange, updateOilChange, removeOilChange, loanContacts, loans, loanPayments, addLoanContact, updateLoanContact, removeLoanContact, addLoan, updateLoan, removeLoan, addLoanPayment, removeLoanPayment, goals, goalDeposits, addGoal, updateGoal, removeGoal, addGoalDeposit, resetAll]
+    [ready, userName, transactions, recurring, categories, vehicles, fuelings, oilChanges, addTransaction, addTransactionRaw, updateTransaction, removeTransaction, addRecurring, addRecurringRaw, updateRecurring, removeRecurring, addCategory, removeCategory, addVehicle, updateVehicle, removeVehicle, addFueling, updateFueling, removeFueling, addOilChange, updateOilChange, removeOilChange, loanContacts, loans, loanPayments, addLoanContact, updateLoanContact, removeLoanContact, addLoan, updateLoan, removeLoan, addLoanPayment, removeLoanPayment, goals, goalDeposits, addGoal, updateGoal, removeGoal, addGoalDeposit, resetAll, exportData, importData]
   );
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;

@@ -15,6 +15,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { AuthGuard } from "@/components/AuthGuard";
 import { ChatSheet } from "@/components/ChatSheet";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppDataProvider } from "@/contexts/AppDataContext";
@@ -156,8 +157,10 @@ function AppContent() {
               <AppDataProvider>
                 <ChatProvider>
                   <StatusBar style="auto" />
-                  <RootLayoutNav />
-                  <ChatSheet />
+                  <AuthGuard>
+                    <RootLayoutNav />
+                    <ChatSheet />
+                  </AuthGuard>
                 </ChatProvider>
               </AppDataProvider>
             </KeyboardProvider>
