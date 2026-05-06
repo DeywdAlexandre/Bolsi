@@ -113,6 +113,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         goals: data.goals,
         goalDeposits: data.goalDeposits,
         addGoalDeposit: data.addGoalDeposit,
+        vehicleExpenses: data.vehicleExpenses,
+        addVehicleExpense: data.addVehicleExpense,
       });
 
       const systemMsg: ChatMessage = {
@@ -256,6 +258,14 @@ async function runTool(
         return await handlers.addOilChange(args as Parameters<typeof handlers.addOilChange>[0]);
       case "get_vehicle_stats":
         return await handlers.getVehicleStats(args as Parameters<typeof handlers.getVehicleStats>[0]);
+      case "add_vehicle_expense":
+        return await handlers.addVehicleExpense(args as Parameters<typeof handlers.addVehicleExpense>[0]);
+      case "list_goals":
+        return await handlers.listGoals();
+      case "add_goal_deposit":
+        return await handlers.addGoalDeposit(args as Parameters<typeof handlers.addGoalDeposit>[0]);
+      case "generate_loan_report":
+        return await handlers.generateLoanReport(args as Parameters<typeof handlers.generateLoanReport>[0]);
       default:
         return { ok: false, error: `Ferramenta desconhecida: ${call.function.name}` };
     }

@@ -173,3 +173,14 @@ export type LoanPayment = {
   transactionId?: string; // ID da transação vinculada no extrato principal
   createdAt: string;
 };
+
+export type VehicleExpense = {
+  id: string;
+  vehicleId: string;
+  date: string;
+  description: string;
+  amount: number;
+  odometer?: number;
+  transactionId?: string;
+  createdAt: string;
+};

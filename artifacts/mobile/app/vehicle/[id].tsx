@@ -6,6 +6,8 @@ import {
   StyleSheet,
   Text,
   View,
+  Modal,
+  TextInput,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { router, Stack, useLocalSearchParams } from "expo-router";
@@ -22,22 +24,30 @@ import {
   formatLiters,
   FUEL_TYPE_LABELS,
 } from "@/lib/vehicleStats";
-import type { Fueling, OilChange } from "@/lib/types";
+import type { Fueling, OilChange, Vehicle, VehicleExpense } from "@/lib/types";
 
 type Entry =
   | { kind: "fueling"; data: Fueling }
-  | { kind: "oilchange"; data: OilChange };
+  | { kind: "oilchange"; data: OilChange }
+  | { kind: "vehicleexpense"; data: VehicleExpense };
 
 export default function VehicleDetailScreen() {
   const colors = useColors();
+  const [extraModalVisible, setExtraModalVisible] = React.useState(false);
+  const [extraDesc, setExtraDesc] = React.useState("");
+  const [extraAmount, setExtraAmount] = React.useState("");
+  const [extraOdo, setExtraOdo] = React.useState("");
   const { id } = useLocalSearchParams<{ id: string }>();
   const {
     vehicles,
     fuelings,
     oilChanges,
+    vehicleExpenses,
     removeVehicle,
     removeFueling,
     removeOilChange,
+    addVehicleExpense,
+    removeVehicleExpense,
     transactions,
     removeTransaction,
   } = useAppData();
@@ -49,8 +59,8 @@ export default function VehicleDetailScreen() {
 
   const stats = useMemo(
     () =>
-      vehicle ? computeVehicleStats(vehicle, fuelings, oilChanges) : null,
-    [vehicle, fuelings, oilChanges],
+      vehicle ? computeVehicleStats(vehicle, fuelings, oilChanges, vehicleExpenses) : null,
+    [vehicle, fuelings, oilChanges, vehicleExpenses],
   );
 
   const entries: Entry[] = useMemo(() => {
@@ -61,11 +71,14 @@ export default function VehicleDetailScreen() {
     const os: Entry[] = oilChanges
       .filter((o) => o.vehicleId === vehicle.id)
       .map((o) => ({ kind: "oilchange" as const, data: o }));
-    return [...fs, ...os].sort(
+    const vexs: Entry[] = vehicleExpenses
+      .filter((v) => v.vehicleId === vehicle.id)
+      .map((v) => ({ kind: "vehicleexpense" as const, data: v }));
+    return [...fs, ...os, ...vexs].sort(
       (a, b) =>
         new Date(b.data.date).getTime() - new Date(a.data.date).getTime(),
     );
-  }, [vehicle, fuelings, oilChanges]);
+  }, [vehicle, fuelings, oilChanges, vehicleExpenses]);
 
   if (!vehicle || !stats) {
     return (
@@ -104,9 +117,11 @@ export default function VehicleDetailScreen() {
 
   const handleDeleteEntry = (entry: Entry) => {
     const isFuel = entry.kind === "fueling";
+    const isOil = entry.kind === "oilchange";
+    const title = isFuel ? "Excluir abastecimento" : isOil ? "Excluir troca de óleo" : "Excluir gasto extra";
     Alert.alert(
-      isFuel ? "Excluir abastecimento" : "Excluir troca de óleo",
-      "Tem certeza? Se houver gasto vinculado, ele também será excluído.",
+      title,
+      "Tem certeza? Se houver gasto vinculado no extrato, ele também será excluído.",
       [
         { text: "Cancelar", style: "cancel" },
         {
@@ -118,7 +133,8 @@ export default function VehicleDetailScreen() {
               await removeTransaction(linkedId);
             }
             if (isFuel) await removeFueling(entry.data.id);
-            else await removeOilChange(entry.data.id);
+            else if (isOil) await removeOilChange(entry.data.id);
+            else await removeVehicleExpense(entry.data.id);
           },
         },
       ],
@@ -183,9 +199,15 @@ export default function VehicleDetailScreen() {
           />
           <ActionButton
             icon="settings"
-            label="Trocar óleo"
+            label="Óleo"
             color={colors.accent}
             onPress={() => router.push(`/oilchange/new?vehicleId=${vehicle.id}`)}
+          />
+          <ActionButton
+            icon="tool"
+            label="Gasto"
+            color={colors.mutedForeground}
+            onPress={() => setExtraModalVisible(true)}
           />
         </View>
 
@@ -307,9 +329,19 @@ export default function VehicleDetailScreen() {
                 ]}
               >
                 <IconCircle
-                  name={entry.kind === "fueling" ? "droplet" : "settings"}
+                  name={
+                    entry.kind === "fueling"
+                      ? "droplet"
+                      : entry.kind === "oilchange"
+                        ? "settings"
+                        : "tool"
+                  }
                   color={
-                    entry.kind === "fueling" ? colors.primary : colors.accent
+                    entry.kind === "fueling"
+                      ? colors.primary
+                      : entry.kind === "oilchange"
+                        ? colors.accent
+                        : colors.mutedForeground
                   }
                   size={40}
                 />
@@ -320,7 +352,9 @@ export default function VehicleDetailScreen() {
                   >
                     {entry.kind === "fueling"
                       ? `${formatLiters(entry.data.liters)} L · ${formatKm(entry.data.odometer)} km`
-                      : `Troca de óleo · ${formatKm(entry.data.odometer)} km`}
+                      : entry.kind === "oilchange"
+                        ? `Troca de óleo · ${formatKm(entry.data.odometer)} km`
+                        : `${entry.data.description}`}
                   </Text>
                   <Text
                     style={[styles.entrySub, { color: colors.mutedForeground }]}
@@ -341,16 +375,118 @@ export default function VehicleDetailScreen() {
                 >
                   {entry.kind === "fueling"
                     ? formatCurrency(entry.data.totalCost)
-                    : entry.data.cost
-                      ? formatCurrency(entry.data.cost)
-                      : ""}
+                    : entry.kind === "oilchange"
+                      ? entry.data.cost
+                        ? formatCurrency(entry.data.cost)
+                        : ""
+                      : formatCurrency(entry.data.amount)}
                 </Text>
               </Pressable>
             ))
           )}
         </View>
       </ScrollView>
+      <ExtraExpenseModal
+        visible={extraModalVisible}
+        onClose={() => setExtraModalVisible(false)}
+        vehicleId={vehicle.id}
+      />
     </>
+  );
+}
+
+function ExtraExpenseModal({
+  visible,
+  onClose,
+  vehicleId,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  vehicleId: string;
+}) {
+  const colors = useColors();
+  const { addVehicleExpense } = useAppData();
+  const [desc, setDesc] = React.useState("");
+  const [amount, setAmount] = React.useState("");
+  const [odo, setOdo] = React.useState("");
+  const [loading, setLoading] = React.useState(false);
+
+  const handleSave = async () => {
+    if (!desc || !amount) {
+      Alert.alert("Erro", "Preencha a descrição e o valor.");
+      return;
+    }
+    setLoading(true);
+    try {
+      await addVehicleExpense({
+        vehicleId,
+        description: desc,
+        amount: parseFloat(amount.replace(",", ".")),
+        date: new Date().toISOString(),
+        odometer: odo ? parseInt(odo) : undefined,
+      });
+      setDesc("");
+      setAmount("");
+      setOdo("");
+      onClose();
+    } catch (e) {
+      Alert.alert("Erro ao salvar", "Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.modalOverlay}>
+        <View style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.modalTitle, { color: colors.foreground }]}>Novo Gasto Extra</Text>
+          
+          <Text style={[styles.label, { color: colors.mutedForeground }]}>Descrição (ex: Lava-jato)</Text>
+          <TextInput
+            style={[styles.input, { color: colors.foreground, borderColor: colors.border }]}
+            value={desc}
+            onChangeText={setDesc}
+            placeholder="O que você pagou?"
+            placeholderTextColor={colors.mutedForeground}
+          />
+
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.label, { color: colors.mutedForeground }]}>Valor (R$)</Text>
+              <TextInput
+                style={[styles.input, { color: colors.foreground, borderColor: colors.border }]}
+                value={amount}
+                onChangeText={setAmount}
+                keyboardType="numeric"
+                placeholder="0,00"
+                placeholderTextColor={colors.mutedForeground}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.label, { color: colors.mutedForeground }]}>KM (Opcional)</Text>
+              <TextInput
+                style={[styles.input, { color: colors.foreground, borderColor: colors.border }]}
+                value={odo}
+                onChangeText={setOdo}
+                keyboardType="numeric"
+                placeholder="Km atual"
+                placeholderTextColor={colors.mutedForeground}
+              />
+            </View>
+          </View>
+
+          <View style={styles.modalButtons}>
+            <Pressable onPress={onClose} style={[styles.btn, { backgroundColor: colors.muted + "40" }]}>
+              <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold" }}>Cancelar</Text>
+            </Pressable>
+            <Pressable onPress={handleSave} disabled={loading} style={[styles.btn, { backgroundColor: colors.primary }]}>
+              <Text style={{ color: "white", fontFamily: "Inter_700Bold" }}>{loading ? "Salvando..." : "Salvar"}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -547,5 +683,46 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_500Medium",
     marginTop: 2,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    padding: 20,
+  },
+  modalContent: {
+    borderRadius: 24,
+    borderWidth: 1,
+    padding: 24,
+    gap: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    marginBottom: 8,
+  },
+  label: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    marginBottom: 6,
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 15,
+    fontFamily: "Inter_500Medium",
+  },
+  modalButtons: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 8,
+  },
+  btn: {
+    flex: 1,
+    height: 48,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

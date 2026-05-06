@@ -19,7 +19,7 @@ import {
 export default function VehiclesScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { vehicles, fuelings, oilChanges } = useAppData();
+  const { vehicles, fuelings, oilChanges, vehicleExpenses } = useAppData();
 
   const sorted = useMemo(
     () => [...vehicles].sort((a, b) => a.name.localeCompare(b.name)),
@@ -70,7 +70,7 @@ export default function VehiclesScreen() {
           </View>
         ) : (
           sorted.map((v) => {
-            const stats = computeVehicleStats(v, fuelings, oilChanges);
+            const stats = computeVehicleStats(v, fuelings, oilChanges, vehicleExpenses);
             const accent = v.color || colors.primary;
             return (
               <Pressable

@@ -1,4 +1,4 @@
-import type { Fueling, OilChange, Vehicle } from "./types";
+import type { Fueling, OilChange, Vehicle, VehicleExpense } from "./types";
 
 export type VehicleStats = {
   hasFuelings: boolean;
@@ -11,6 +11,7 @@ export type VehicleStats = {
   totalCostInSegments: number;
   totalSpentAllTime: number;
   totalLitersAllTime: number;
+  totalExtraExpenses: number;
   lastFueling: Fueling | null;
   lastOilChange: OilChange | null;
   lastOdometer: number | null;
@@ -31,6 +32,7 @@ export function computeVehicleStats(
   vehicle: Vehicle,
   allFuelings: Fueling[],
   allOilChanges: OilChange[],
+  allExtraExpenses: VehicleExpense[],
 ): VehicleStats {
   const fuelings = sortByDateAsc(
     allFuelings.filter((f) => f.vehicleId === vehicle.id),
@@ -38,13 +40,18 @@ export function computeVehicleStats(
   const oilChanges = sortByDateAsc(
     allOilChanges.filter((o) => o.vehicleId === vehicle.id),
   );
+  const extraExpenses = allExtraExpenses.filter((e) => e.vehicleId === vehicle.id);
 
   const lastFueling = fuelings.length ? fuelings[fuelings.length - 1]! : null;
   const lastOilChange = oilChanges.length
     ? oilChanges[oilChanges.length - 1]!
     : null;
 
-  const totalSpentAllTime = fuelings.reduce((s, f) => s + f.totalCost, 0);
+  const totalSpentFuel = fuelings.reduce((s, f) => s + f.totalCost, 0);
+  const totalSpentOil = oilChanges.reduce((s, o) => s + (o.cost || 0), 0);
+  const totalExtraExpenses = extraExpenses.reduce((s, e) => s + e.amount, 0);
+  
+  const totalSpentAllTime = totalSpentFuel + totalSpentOil + totalExtraExpenses;
   const totalLitersAllTime = fuelings.reduce((s, f) => s + f.liters, 0);
 
   // segments between consecutive fuelings with the same tank status
@@ -64,9 +71,18 @@ export function computeVehicleStats(
     totalCostInSegments += curr.totalCost;
   }
 
+  // Custo por KM levando em conta tudo o que foi gasto (não apenas combustivel)
+  // Se medimos uma certa quilometragem, queremos saber quanto custou rodar aquilo no total.
+  // Usamos totalCostInSegments para a parte de combustível e proporcionalizamos o resto ou simplesmente usamos o total geral pelo km total medido.
+  // Para ser mais simples e preciso: (Gastos Totais / KM Total percorrido desde o inicio)
+  const measuredKm = fuelings.length >= 2 
+    ? (fuelings[fuelings.length - 1]!.odometer - fuelings[0]!.odometer)
+    : 0;
+
+  const avgCostPerKm = measuredKm > 0 ? (totalSpentAllTime / measuredKm) : (totalKm > 0 ? totalCostInSegments / totalKm : null);
+
   const hasComputedKmL = totalLitersInSegments > 0;
   const avgKmPerLiter = hasComputedKmL ? totalKm / totalLitersInSegments : null;
-  const avgCostPerKm = totalKm > 0 ? totalCostInSegments / totalKm : null;
   const recentSegment = segments[segments.length - 1] ?? null;
   const recentKmPerLiter = recentSegment
     ? recentSegment.km / recentSegment.liters
@@ -101,6 +117,7 @@ export function computeVehicleStats(
     totalLitersInSegments,
     totalCostInSegments,
     totalSpentAllTime,
+    totalExtraExpenses,
     totalLitersAllTime,
     lastFueling,
     lastOilChange,

@@ -18,6 +18,7 @@ import type {
   Transaction,
   TransactionType,
   Vehicle,
+  VehicleExpense,
   LoanContact,
   Loan,
   LoanPayment,
@@ -35,6 +36,7 @@ type AppDataContextValue = {
   vehicles: Vehicle[];
   fuelings: Fueling[];
   oilChanges: OilChange[];
+  vehicleExpenses: VehicleExpense[];
   addTransaction: (input: Omit<Transaction, "id" | "createdAt">) => Promise<Transaction>;
   addTransactionRaw: (tx: Transaction) => Promise<void>;
   updateTransaction: (id: string, patch: Partial<Transaction>) => Promise<void>;
@@ -54,6 +56,8 @@ type AppDataContextValue = {
   addOilChange: (input: Omit<OilChange, "id" | "createdAt">) => Promise<OilChange>;
   updateOilChange: (id: string, patch: Partial<OilChange>) => Promise<void>;
   removeOilChange: (id: string) => Promise<void>;
+  addVehicleExpense: (input: Omit<VehicleExpense, "id" | "createdAt">) => Promise<VehicleExpense>;
+  removeVehicleExpense: (id: string) => Promise<void>;
   loanContacts: LoanContact[];
   loans: Loan[];
   loanPayments: LoanPayment[];
@@ -89,6 +93,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [fuelings, setFuelings] = useState<Fueling[]>([]);
   const [oilChanges, setOilChanges] = useState<OilChange[]>([]);
+  const [vehicleExpenses, setVehicleExpenses] = useState<VehicleExpense[]>([]);
   const [loanContacts, setLoanContacts] = useState<LoanContact[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [loanPayments, setLoanPayments] = useState<LoanPayment[]>([]);
@@ -112,9 +117,10 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         loadJson<string>(STORAGE_KEYS.userName, ""),
         loadJson<Goal[]>(STORAGE_KEYS.goals, []),
         loadJson<GoalDeposit[]>(STORAGE_KEYS.goalDeposits, []),
+        loadJson<VehicleExpense[]>(STORAGE_KEYS.vehicleExpenses, []),
       ]);
       if (cancelled) return;
-      const [tx, rc, cats, veh, fue, oil, lc, l, lp, name, g, gd] = results;
+      const [tx, rc, cats, veh, fue, oil, lc, l, lp, name, g, gd, vex] = results;
       
       const mergedCats = [...cats];
       DEFAULT_CATEGORIES.forEach(def => {
@@ -129,6 +135,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       setVehicles(veh);
       setFuelings(fue);
       setOilChanges(oil);
+      setVehicleExpenses(vex);
       setLoanContacts(lc);
       setLoans(l);
       setLoanPayments(lp);
@@ -483,6 +490,43 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const addVehicleExpense = useCallback(async (input: Omit<VehicleExpense, "id" | "createdAt">) => {
+    // Vincular ao extrato principal como despesa
+    const tx = await addTransaction({
+      type: "expense",
+      amount: input.amount,
+      categoryId: "others", // Idealmente uma categoria de manutenção
+      description: `Veículo: ${input.description}`,
+      date: input.date,
+    });
+
+    const ve: VehicleExpense = { 
+      ...input, 
+      id: "vex_" + genId(), 
+      transactionId: tx.id,
+      createdAt: new Date().toISOString() 
+    };
+
+    setVehicleExpenses((prev) => {
+      const next = [ve, ...prev];
+      void saveJson(STORAGE_KEYS.vehicleExpenses, next);
+      return next;
+    });
+    return ve;
+  }, [addTransaction]);
+
+  const removeVehicleExpense = useCallback(async (id: string) => {
+    let txId: string | undefined;
+    setVehicleExpenses((prev) => {
+      const target = prev.find(v => v.id === id);
+      txId = target?.transactionId;
+      const next = prev.filter((v) => v.id !== id);
+      void saveJson(STORAGE_KEYS.vehicleExpenses, next);
+      return next;
+    });
+    if (txId) removeTransaction(txId);
+  }, [removeTransaction]);
+
   const addLoanContact = useCallback(async (input: Omit<LoanContact, "id" | "createdAt">) => {
     const lc: LoanContact = { ...input, id: "lc_" + genId(), createdAt: new Date().toISOString() };
     setLoanContacts((prev) => {
@@ -657,6 +701,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     setLoanPayments([]);
     setGoals([]);
     setGoalDeposits([]);
+    setVehicleExpenses([]);
     await Promise.all([
       saveJson(STORAGE_KEYS.transactions, []),
       saveJson(STORAGE_KEYS.recurring, []),
@@ -664,6 +709,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       saveJson(STORAGE_KEYS.vehicles, []),
       saveJson(STORAGE_KEYS.fuelings, []),
       saveJson(STORAGE_KEYS.oilChanges, []),
+      saveJson(STORAGE_KEYS.vehicleExpenses, []),
       saveJson(STORAGE_KEYS.loanContacts, []),
       saveJson(STORAGE_KEYS.loans, []),
       saveJson(STORAGE_KEYS.loanPayments, []),
@@ -689,6 +735,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         loanPayments,
         goals,
         goalDeposits,
+        vehicleExpenses,
         userName,
       }
     };
@@ -723,6 +770,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       setLoanPayments(p.loanPayments || []);
       setGoals(p.goals || []);
       setGoalDeposits(p.goalDeposits || []);
+      setVehicleExpenses(p.vehicleExpenses || []);
       setUserNameState(p.userName || "");
 
       // Salvar no Storage
@@ -738,6 +786,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         saveJson(STORAGE_KEYS.loanPayments, p.loanPayments || []),
         saveJson(STORAGE_KEYS.goals, p.goals || []),
         saveJson(STORAGE_KEYS.goalDeposits, p.goalDeposits || []),
+        saveJson(STORAGE_KEYS.vehicleExpenses, p.vehicleExpenses || []),
         saveJson(STORAGE_KEYS.userName, p.userName || ""),
       ]);
 
@@ -758,6 +807,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       vehicles,
       fuelings,
       oilChanges,
+      vehicleExpenses,
       addTransaction,
       addTransactionRaw,
       updateTransaction,
@@ -777,6 +827,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       addOilChange,
       updateOilChange,
       removeOilChange,
+      addVehicleExpense,
+      removeVehicleExpense,
       loanContacts,
       loans,
       loanPayments,
@@ -798,7 +850,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       exportData,
       importData,
     }),
-    [ready, userName, transactions, recurring, categories, vehicles, fuelings, oilChanges, addTransaction, addTransactionRaw, updateTransaction, removeTransaction, addRecurring, addRecurringRaw, updateRecurring, removeRecurring, addCategory, removeCategory, addVehicle, updateVehicle, removeVehicle, addFueling, updateFueling, removeFueling, addOilChange, updateOilChange, removeOilChange, loanContacts, loans, loanPayments, addLoanContact, updateLoanContact, removeLoanContact, addLoan, updateLoan, removeLoan, addLoanPayment, removeLoanPayment, goals, goalDeposits, addGoal, updateGoal, removeGoal, addGoalDeposit, resetAll, exportData, importData]
+    [ready, userName, transactions, recurring, categories, vehicles, fuelings, oilChanges, vehicleExpenses, addTransaction, addTransactionRaw, updateTransaction, removeTransaction, addRecurring, addRecurringRaw, updateRecurring, removeRecurring, addCategory, removeCategory, addVehicle, updateVehicle, removeVehicle, addFueling, updateFueling, removeFueling, addOilChange, updateOilChange, removeOilChange, addVehicleExpense, removeVehicleExpense, loanContacts, loans, loanPayments, addLoanContact, updateLoanContact, removeLoanContact, addLoan, updateLoan, removeLoan, addLoanPayment, removeLoanPayment, goals, goalDeposits, addGoal, updateGoal, removeGoal, addGoalDeposit, resetAll, exportData, importData]
   );
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;

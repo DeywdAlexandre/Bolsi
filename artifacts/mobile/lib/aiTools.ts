@@ -38,6 +38,14 @@ export type DeleteTransactionArgs = {
   description?: string;
 };
 
+export type AddVehicleExpenseArgs = {
+  vehicleName: string;
+  description: string;
+  amount: number;
+  odometer?: number;
+  date?: string;
+};
+
 export const AI_TOOLS: ToolDefinition[] = [
   {
     type: "function",
@@ -277,6 +285,24 @@ export const AI_TOOLS: ToolDefinition[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "add_vehicle_expense",
+      description: "Registra um gasto extra ou manutenção variada com o veículo (lava-jato, mecânica, pneus, etc).",
+      parameters: {
+        type: "object",
+        properties: {
+          vehicleName: { type: "string", description: "Nome ou placa do veículo" },
+          description: { type: "string", description: "Descrição do gasto (ex: 'Lava-jato', 'Conserto pneu')" },
+          amount: { type: "number", description: "Valor total pago em reais" },
+          odometer: { type: "number", description: "Opcional: Quilometragem atual" },
+          date: { type: "string", description: "Opcional: Data ISO. Padrão é hoje." },
+        },
+        required: ["vehicleName", "description", "amount"],
+      },
+    },
+  },
 ];
 
 export type ToolHandlers = {
@@ -323,6 +349,7 @@ export type ToolHandlers = {
   listGoals: () => Promise<{ goals: any[] }>;
   addGoalDeposit: (args: { goalTitle: string; amount: number }) => Promise<{ ok: boolean; goal?: any; error?: string }>;
   generateLoanReport: (args: { loanDescription: string }) => Promise<{ ok: boolean; error?: string }>;
+  addVehicleExpense: (args: AddVehicleExpenseArgs) => Promise<{ ok: boolean; expense?: any; error?: string }>;
 };
 
 function findCategory(categories: Category[], name: string, type: TransactionType): Category | undefined {
@@ -355,6 +382,8 @@ export function buildToolHandlers(deps: {
   goals: any[];
   goalDeposits: any[];
   addGoalDeposit: (d: any) => Promise<any>;
+  vehicleExpenses: any[];
+  addVehicleExpense: (e: any) => Promise<any>;
 }): ToolHandlers {
   return {
     async addTransaction(args) {
@@ -641,7 +670,7 @@ export function buildToolHandlers(deps: {
       );
       if (!vehicle) return { stats: null, error: "Veículo não encontrado." };
 
-      const stats = computeVehicleStats(vehicle, deps.fuelings, deps.oilChanges);
+      const stats = computeVehicleStats(vehicle, deps.fuelings, deps.oilChanges, deps.vehicleExpenses);
       return {
         stats: {
           vehicleName: vehicle.name,
@@ -649,8 +678,25 @@ export function buildToolHandlers(deps: {
           lastOdometer: stats.lastOdometer ? formatKm(stats.lastOdometer) + " km" : "N/A",
           oilStatus: stats.oilStatus,
           kmRemainingOil: stats.kmRemainingOil ? formatKm(stats.kmRemainingOil) + " km" : "N/A",
+          avgCostPerKm: stats.avgCostPerKm ? "R$ " + stats.avgCostPerKm.toFixed(2) + " / km" : "N/A",
         },
       };
+    },
+    async addVehicleExpense(args) {
+      const vehicle = deps.vehicles.find(
+        (v) => v.name.toLowerCase().includes(args.vehicleName.toLowerCase()) || v.plate?.toLowerCase().includes(args.vehicleName.toLowerCase())
+      );
+      if (!vehicle) return { ok: false, error: "Veículo não encontrado." };
+
+      const expense = await deps.addVehicleExpense({
+        vehicleId: vehicle.id,
+        description: args.description,
+        amount: args.amount,
+        odometer: args.odometer,
+        date: args.date || new Date().toISOString(),
+      });
+
+      return { ok: true, expense };
     },
     async listGoals() {
       const list = deps.goals.map((g) => {

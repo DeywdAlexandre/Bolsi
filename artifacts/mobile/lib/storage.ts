@@ -15,6 +15,7 @@ export const STORAGE_KEYS = {
   userName: "@bolso/user_name/v1",
   goals: "@bolso/goals/v1",
   goalDeposits: "@bolso/goal_deposits/v1",
+  vehicleExpenses: "@bolso/vehicle_expenses/v1",
 } as const;
 
 export async function loadJson<T>(key: string, fallback: T): Promise<T> {
