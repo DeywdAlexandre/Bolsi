@@ -212,17 +212,15 @@ export async function generateLoanReport(
   `;
 
   try {
-    const { uri } = await Print.printToFileAsync({ html });
-    if (Platform.OS === "ios") {
-      await Sharing.shareAsync(uri);
-    } else {
-      // No Android, renomear ajuda no compartilhamento
-      const newUri = uri.replace('print.pdf', `extrato_${contact.name.replace(/\s+/g, '_')}.pdf`);
-      // No real world usariamos FileSystem.moveAsync, mas aqui vamos tentar o direto
-      await Sharing.shareAsync(uri);
+    if (!Print.printToFileAsync || !Sharing.shareAsync) {
+      alert("A função de PDF não está disponível nesta versão do app (Build Conservador).");
+      return;
     }
+
+    const { uri } = await Print.printToFileAsync({ html });
+    await Sharing.shareAsync(uri);
   } catch (error) {
-    console.error("Erro ao gerar PDF:", error);
-    throw error;
+    console.warn("Erro ao gerar ou compartilhar PDF (módulo nativo pode estar ausente):", error);
+    alert("Não foi possível gerar o PDF. Verifique se o app tem as permissões necessárias.");
   }
 }
