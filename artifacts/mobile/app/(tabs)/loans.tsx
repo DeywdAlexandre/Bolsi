@@ -166,19 +166,27 @@ export default function LoansDashboard() {
       <View style={styles.header}>
         <View style={styles.titleRow}>
           <Text style={[styles.title, { color: colors.primaryForeground }]}>Empréstimos</Text>
-          <Pressable 
-            onPress={toggleExpand}
-            style={[styles.expandBtn, { backgroundColor: colors.primaryForeground + "20" }]}
-          >
-            <Feather 
-              name={isExpanded ? "chevron-up" : "chevron-down"} 
-              size={20} 
-              color={colors.primaryForeground} 
-            />
-            <Text style={[styles.expandBtnText, { color: colors.primaryForeground }]}>
-              {isExpanded ? "Recolher" : "Detalhes"}
-            </Text>
-          </Pressable>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <Pressable 
+              onPress={() => router.push("/loans/agenda")}
+              style={[styles.expandBtn, { backgroundColor: colors.primaryForeground + "20" }]}
+            >
+              <Feather name="calendar" size={18} color={colors.primaryForeground} />
+            </Pressable>
+            <Pressable 
+              onPress={toggleExpand}
+              style={[styles.expandBtn, { backgroundColor: colors.primaryForeground + "20" }]}
+            >
+              <Feather 
+                name={isExpanded ? "chevron-up" : "chevron-down"} 
+                size={20} 
+                color={colors.primaryForeground} 
+              />
+              <Text style={[styles.expandBtnText, { color: colors.primaryForeground }]}>
+                {isExpanded ? "Recolher" : "Detalhes"}
+              </Text>
+            </Pressable>
+          </View>
         </View>
         
         {/* Cards de Resumo Principais */}
