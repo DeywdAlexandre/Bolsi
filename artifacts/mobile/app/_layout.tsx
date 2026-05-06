@@ -110,19 +110,42 @@ export default function RootLayout() {
         setUpdateChecked(true);
       }
     };
-    const timer = setTimeout(finish, 6000);
+
+    // Timeout menor para não travar o usuário
+    const timer = setTimeout(finish, 3500);
+
     (async () => {
       try {
+        // No Web, tentamos detectar mudanças de service worker de forma mais agressiva
+        if (Platform.OS === "web" && "serviceWorker" in navigator) {
+          const registration = await navigator.serviceWorker.getRegistration();
+          if (registration) {
+            registration.addEventListener("updatefound", () => {
+              const newWorker = registration.installing;
+              if (newWorker) {
+                newWorker.addEventListener("statechange", () => {
+                  if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+                    // Nova versão instalada, recarrega para aplicar
+                    window.location.reload();
+                  }
+                });
+              }
+            });
+          }
+        }
+
         const result = await Updates.checkForUpdateAsync();
         if (result.isAvailable) {
           await Updates.fetchUpdateAsync();
           await Updates.reloadAsync();
           return;
         }
-      } catch {
+      } catch (e) {
+        console.warn("Update check failed:", e);
       }
       finish();
     })();
+
     return () => {
       clearTimeout(timer);
       finish();
