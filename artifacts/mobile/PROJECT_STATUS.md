@@ -30,32 +30,39 @@ O **Bolso** é um assistente financeiro pessoal "Offline-First" com inteligênci
 ### 3. Gestão de Assinaturas & Fixos
 - Suporte a recorrências com projeção de custo anual.
 
-### 4. Veículos & Empréstimos
-- Módulos completos de gestão de frota e CRM financeiro para dívidas e cobranças.
+### 4. Veículos & Empréstimos (Completo 🏛️)
+- **CRM Financeiro**: Gestão de contatos, dívidas e parcelas fixas/variáveis.
+- **Agenda Situacional**: Centro de comando para vencimentos (Atrasados, Hoje, 7 dias).
+- **Extratos PDF**: Geração de relatórios profissionais compartilháveis via WhatsApp.
+
+### 5. Segurança & Backup (Infra Nativa 🔐)
+- **Proteção Biométrica**: Bloqueio total do app com Digital/Face ID (Pronto para APK).
+- **Backup Profissional**: Exportação e Importação real de arquivos .json com versionamento.
+- **Notificações**: Lembretes automáticos de vencimento agendados localmente.
 
 ---
 
-## 📈 Log de Atualizações (02/05/2026)
+## 📈 Log de Atualizações (06/05/2026)
 
-- **Feature**: Módulo **Metas & Futuro** com rendimento automático mensal.
-- **Feature**: Sistema de **Assinaturas** com cálculo de custo anual.
-- **UX**: Refatoração do **Início** para uma visualização de patrimônio mais profissional e limpa.
-- **UX**: Header imersivo e design premium nas telas de detalhes.
-- **Fix**: Estabilização de tipos TypeScript no simulador financeiro.
-- **Deploy**: Publicação múltipla via OTA na branch `preview` para testes imediatos.
+- **Feature**: Módulo **Agenda Situacional de Empréstimos** com KPIs de saúde da carteira.
+- **Feature**: **Relatórios PDF** integrados para envio de extratos a clientes.
+- **Infra**: Implementação de **Biometria e Backup JSON** (aguardando build nativo).
+- **Infra**: Instalação de bibliotecas base para **Câmera, Contatos e Calendário**.
+- **UX**: Padronização de Headers Premium em todo o fluxo de empréstimos.
+- **Deploy**: Publicação OTA na branch `preview` (versão funcional atual).
 
 ---
 
 ## ⏳ Próximos Passos (Backlog)
 
 ### 🚀 Prioridade Máxima
-- [ ] **EAS Build (Android/iOS)**: Gerar instaladores reais para produção.
-- [ ] **Proteção Biométrica**: Digital/Face ID ao abrir o app.
+- [ ] **EAS Build (Android/iOS)**: Gerar os novos instaladores com as bibliotecas nativas integradas.
 
-### 📡 Evoluções via OTA
-- [ ] **Backup JSON**: Implementar exportação e importação real de dados.
-- [ ] **Relatórios PDF**: Gerar extratos mensais profissionais.
+### 📡 Futuras Evoluções (Infra Pronta)
+- [ ] **Contatos**: Vincular empréstimos diretamente à agenda do celular.
+- [ ] **Calendário**: Sincronizar vencimentos com o Google/iCloud Calendar.
+- [ ] **Scanner**: Anexar fotos de recibos via câmera.
 - [ ] **Gamificação**: Medalhas por metas alcançadas.
 
 ---
-*Atualizado por Antigravity em 02/05/2026 - Versão Premium 1.2.1 (Final Session)*
+*Atualizado por Antigravity em 06/05/2026 - Versão Premium 1.5.0 (Native Ready)*

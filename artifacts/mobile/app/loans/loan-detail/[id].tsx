@@ -18,13 +18,15 @@ import { EmptyState } from "@/components/EmptyState";
 import { useAppData } from "@/contexts/AppDataContext";
 import { useColors } from "@/hooks/useColors";
 import { formatCurrency, formatDate, genId } from "@/lib/format";
+import { generateLoanReport } from "@/lib/reports";
 
 export default function LoanDetailScreen() {
   const colors = useColors();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { loans, loanPayments, addLoanPayment, removeLoanPayment, addTransactionRaw, removeLoan } = useAppData();
+  const { loans, loanPayments, addLoanPayment, removeLoanPayment, addTransactionRaw, removeLoan, loanContacts } = useAppData();
 
   const loan = useMemo(() => loans.find((l) => l.id === id), [loans, id]);
+  const contact = useMemo(() => loanContacts.find(c => c.id === loan?.contactId), [loanContacts, loan]);
   const payments = useMemo(() => 
     loanPayments.filter((p) => p.loanId === id)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
@@ -172,6 +174,17 @@ export default function LoanDetailScreen() {
           ),
           headerRight: () => (
             <View style={{ flexDirection: "row", gap: 12 }}>
+              <Pressable
+                onPress={() => {
+                  if (loan && contact) {
+                    generateLoanReport(loan, contact, payments);
+                  }
+                }}
+                hitSlop={8}
+                style={{ padding: 6 }}
+              >
+                <Feather name="printer" size={18} color={colors.primary} />
+              </Pressable>
               <Pressable
                 onPress={() => router.push({ pathname: "/loans/new", params: { id: loan.id, contactId: loan.contactId } })}
                 hitSlop={8}
