@@ -10,9 +10,16 @@ type Props = {
   expense: number;
   balance: number;
   globalBalance: number;
+  savedAmount?: number;
 };
 
-export function SummaryCards({ income, expense, balance, globalBalance }: Props) {
+export function SummaryCards({ 
+  income, 
+  expense, 
+  balance, 
+  globalBalance,
+  savedAmount = 0 
+}: Props) {
   const colors = useColors();
   const isGlobalPositive = globalBalance >= 0;
   const isPeriodPositive = balance >= 0;
@@ -38,12 +45,23 @@ export function SummaryCards({ income, expense, balance, globalBalance }: Props)
         </Text>
         
         <View style={styles.periodRow}>
-          <Text style={[styles.periodLabel, { color: colors.mutedForeground }]}>
-            Neste período:{" "}
-            <Text style={{ color: isPeriodPositive ? colors.income : colors.expense, fontFamily: "Inter_600SemiBold" }}>
-              {isPeriodPositive ? "+" : ""}{formatCurrency(balance)}
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+            <Text style={[styles.periodLabel, { color: colors.mutedForeground }]}>
+              Neste período:{" "}
+              <Text style={{ color: isPeriodPositive ? colors.income : colors.expense, fontFamily: "Inter_600SemiBold" }}>
+                {isPeriodPositive ? "+" : ""}{formatCurrency(balance)}
+              </Text>
             </Text>
-          </Text>
+            
+            {savedAmount > 0 && (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <Feather name="shield" size={10} color={colors.primary} />
+                <Text style={[styles.periodLabel, { color: colors.mutedForeground }]}>
+                  Guardado: <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold" }}>{formatCurrency(savedAmount)}</Text>
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
       </View>
 

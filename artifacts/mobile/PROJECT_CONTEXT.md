@@ -59,7 +59,7 @@ O assistente Finn deve ser:
 ## 🚀 6. Execução Local
 Para rodar o ambiente de desenvolvimento web no terminal:
 ```powershell
-cd "d:\Meus Projetos\01 - Apps nativos\Bolso\artifacts\mobile"
+cd artifacts/mobile
 pnpm exec expo start --web
 ```
 
