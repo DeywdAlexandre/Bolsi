@@ -26,7 +26,7 @@ export default function VehiclesScreen() {
     [vehicles],
   );
 
-  const topPad = insets.top;
+  const topPad = Platform.OS === "web" ? 15 : insets.top;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>

@@ -14,7 +14,7 @@ export default function GoalsScreen() {
   const insets = useSafeAreaInsets();
   const { goals, ready } = useAppData();
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 15 : insets.top;
 
   const totalSaved = useMemo(() => {
     return goals.reduce((acc, g) => acc + g.currentAmount, 0);

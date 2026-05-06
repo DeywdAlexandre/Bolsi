@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { EmptyState } from "@/components/EmptyState";
 import { ContactAvatar } from "@/components/ContactAvatar";
@@ -22,7 +23,10 @@ import type { LoanContact } from "@/lib/types";
 
 export default function LoansDashboard() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const { loanContacts, loans, loanPayments } = useAppData();
+  
+  const topPad = Platform.OS === "web" ? 15 : insets.top;
   const [search, setSearch] = useState("");
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -161,9 +165,9 @@ export default function LoansDashboard() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.headerBackground, { backgroundColor: colors.primary, height: 200 }]} />
+      <View style={[styles.headerBackground, { backgroundColor: colors.primary, height: topPad + 160 }]} />
       
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: topPad + 12 }]}>
         <View style={styles.titleRow}>
           <Text style={[styles.title, { color: colors.primaryForeground }]}>Empréstimos</Text>
           <View style={{ flexDirection: "row", gap: 8 }}>
