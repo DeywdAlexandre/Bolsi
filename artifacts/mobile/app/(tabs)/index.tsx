@@ -88,7 +88,7 @@ export default function DashboardScreen() {
       .slice(0, 6);
   }, [filtered]);
 
-  const topPad = Platform.OS === "web" ? 35 : insets.top;
+  const topPad = Platform.OS === "web" ? 15 : insets.top;
   const headerMaxHeight = topPad + 220;
   const headerMinHeight = topPad + 65;
 

@@ -182,8 +182,10 @@ function AppContent() {
                 <ChatProvider>
                   <Head>
                     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-                    <link rel="apple-touch-icon" href="/assets/images/icon.png" />
-                    <link rel="icon" type="image/png" href="/assets/images/icon.png" />
+                    <meta name="apple-mobile-web-app-capable" content="yes" />
+                    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+                    <link rel="apple-touch-icon" href="assets/images/icon.png" />
+                    <link rel="icon" type="image/png" href="assets/images/icon.png" />
                   </Head>
                   <StatusBar style="auto" />
                    <RootLayoutNav />
