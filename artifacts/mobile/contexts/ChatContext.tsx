@@ -110,6 +110,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         oilChanges: data.oilChanges,
         addFueling: data.addFueling,
         addOilChange: data.addOilChange,
+        goals: data.goals,
+        goalDeposits: data.goalDeposits,
+        addGoalDeposit: data.addGoalDeposit,
       });
 
       const systemMsg: ChatMessage = {

@@ -44,6 +44,44 @@ export async function scheduleLoanReminder(
   });
 }
 
+export async function scheduleRecurringReminder(
+  title: string,
+  amount: number,
+  dayOfMonth: number,
+  isSubscription: boolean
+) {
+  // Alerta no dia do vencimento às 08h00
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: isSubscription ? `💳 Assinatura Hoje: ${title}` : `📅 Gasto Fixo Hoje: ${title}`,
+      body: `Valor: ${formatCurrency(amount)}. Não esqueça de registrar!`,
+    },
+    trigger: {
+      day: dayOfMonth,
+      hour: 8,
+      minute: 0,
+      repeats: true,
+    },
+  });
+
+  // Alerta 1 dia antes às 18h00
+  // Nota: Se o dia for 1, o alerta do dia anterior simplificado será no dia 28/30 do mês (lógica simplificada do Expo)
+  const alertDay = dayOfMonth === 1 ? 28 : dayOfMonth - 1; 
+  
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: `⏳ Vence Amanhã: ${title}`,
+      body: `Prepare o saldo de ${formatCurrency(amount)} para amanhã.`,
+    },
+    trigger: {
+      day: alertDay,
+      hour: 18,
+      minute: 0,
+      repeats: true,
+    },
+  });
+}
+
 export async function cancelAllNotifications() {
   await Notifications.cancelAllScheduledNotificationsAsync();
 }

@@ -7,6 +7,7 @@ import {
 } from "@expo-google-fonts/inter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
+import Head from "expo-router/head";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import * as Updates from "expo-updates";
@@ -156,11 +157,12 @@ function AppContent() {
             <KeyboardProvider>
               <AppDataProvider>
                 <ChatProvider>
+                  <Head>
+                    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+                  </Head>
                   <StatusBar style="auto" />
-                  <AuthGuard>
-                    <RootLayoutNav />
-                    <ChatSheet />
-                  </AuthGuard>
+                   <RootLayoutNav />
+                   <ChatSheet />
                 </ChatProvider>
               </AppDataProvider>
             </KeyboardProvider>

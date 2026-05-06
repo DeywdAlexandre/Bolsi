@@ -5,11 +5,8 @@ import type { ChatMessage, ToolCall } from "./types";
 export const DEFAULT_MODEL = "openai/gpt-4o-mini";
 
 export const SUGGESTED_MODELS: { value: string; label: string; hint: string }[] = [
-  { value: "openai/gpt-4o-mini", label: "GPT-4o mini", hint: "Recomendado · Rápido e barato" },
-  { value: "google/gemini-2.0-flash-001", label: "Gemini 2.0 Flash", hint: "Ainda mais barato" },
-  { value: "anthropic/claude-3.5-haiku", label: "Claude 3.5 Haiku", hint: "Conversação excelente" },
-  { value: "deepseek/deepseek-chat", label: "DeepSeek Chat", hint: "O mais barato" },
-  { value: "openai/gpt-4o", label: "GPT-4o", hint: "Mais inteligente · Custa mais" },
+  { value: "openai/gpt-4o-mini", label: "GPT-4o mini", hint: "Padrão · Rápido e inteligente" },
+  { value: "deepseek/deepseek-chat", label: "DeepSeek V3", hint: "Escolha · Ultra eficiente" },
 ];
 
 type OpenRouterMessage = {

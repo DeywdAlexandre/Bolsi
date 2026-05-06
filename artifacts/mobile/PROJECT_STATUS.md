@@ -44,19 +44,20 @@ O **Bolso** é um assistente financeiro pessoal "Offline-First" com inteligênci
 
 ## 📈 Log de Atualizações (06/05/2026)
 
-- **Feature**: Módulo **Agenda Situacional de Empréstimos** com KPIs de saúde da carteira.
-- **Feature**: **Relatórios PDF** integrados para envio de extratos a clientes.
-- **Infra**: Implementação de **Biometria e Backup JSON** (aguardando build nativo).
-- **Infra**: Instalação de bibliotecas base para **Câmera, Contatos e Calendário**.
-- **UX**: Padronização de Headers Premium em todo o fluxo de empréstimos.
-- **Deploy**: Publicação OTA na branch `preview` (versão funcional atual).
+- **v1.5.1 (Estabilização)**: Adicionados plugins nativos no `app.json` (Biometria, Notificações, Câmera, etc).
+- **Infra**: Funções nativas (AuthGuard e Notifications) temporariamente desativadas via JS para garantir estabilidade no primeiro build.
+- **IA**: Upgrade no Finn - Agora gerencia metas, confirma veículos e gera relatórios PDF sob demanda.
+- **Ajuste**: Simplificação dos modelos sugeridos para GPT-4o mini (padrão) e DeepSeek V3.
 
 ---
 
 ## ⏳ Próximos Passos (Backlog)
 
 ### 🚀 Prioridade Máxima
-- [ ] **EAS Build (Android/iOS)**: Gerar os novos instaladores com as bibliotecas nativas integradas.
+- [ ] **Validação de APK**: Instalar o novo build estável e confirmar que abre sem crashes.
+- [ ] **Ativação Gradual (OTA)**: 
+    1. Reativar Biometria e testar.
+    2. Reativar Notificações e testar.
 
 ### 📡 Futuras Evoluções (Infra Pronta)
 - [ ] **Contatos**: Vincular empréstimos diretamente à agenda do celular.
@@ -65,4 +66,4 @@ O **Bolso** é um assistente financeiro pessoal "Offline-First" com inteligênci
 - [ ] **Gamificação**: Medalhas por metas alcançadas.
 
 ---
-*Atualizado por Antigravity em 06/05/2026 - Versão Premium 1.5.0 (Native Ready)*
+*Atualizado por Antigravity em 06/05/2026 - Versão Premium 1.5.1 (Stabilization)*

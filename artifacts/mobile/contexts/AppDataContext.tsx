@@ -4,7 +4,12 @@ import { Platform } from "react-native";
 import { DEFAULT_CATEGORIES } from "@/lib/categories";
 import { genId, todayIso } from "@/lib/format";
 import { saveJson, STORAGE_KEYS, loadJson } from "@/lib/storage";
-import { requestNotificationPermissions, scheduleLoanReminder, cancelAllNotifications } from "@/lib/notifications";
+import { 
+  requestNotificationPermissions, 
+  scheduleLoanReminder, 
+  cancelAllNotifications,
+  scheduleRecurringReminder 
+} from "@/lib/notifications";
 import type {
   Category,
   Fueling,
@@ -275,8 +280,19 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           );
         }
       });
+
+      // Agendar Lembretes de Gastos Fixos / Assinaturas
+      recurring.forEach(async (r) => {
+        if (!r.active) return;
+        await scheduleRecurringReminder(
+          r.description,
+          r.amount,
+          r.dayOfMonth,
+          !!r.isSubscription
+        );
+      });
     })();
-  }, [ready, loans, loanPayments, loanContacts]);
+  }, [ready, loans, loanPayments, loanContacts, recurring]);
 
   const setUserName = useCallback(async (name: string) => {
     setUserNameState(name);

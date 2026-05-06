@@ -50,7 +50,19 @@
           "microphonePermission": "Permita o microfone para ditar mensagens ao assistente.",
           "speechRecognitionPermission": "Permita o reconhecimento de voz para transcrever suas mensagens."
         }
-      ]
+      ],
+      "expo-local-authentication",
+      "expo-notifications",
+      "expo-contacts",
+      "expo-calendar",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permita o acesso à câmera para escanear recibos."
+        }
+      ],
+      "expo-sharing",
+      "expo-document-picker"
     ],
     "experiments": {
       "typedRoutes": true,

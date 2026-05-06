@@ -2,6 +2,7 @@ import type { ToolDefinition } from "./openrouter";
 import type { Category, Recurring, Transaction, TransactionType } from "./types";
 import { genId, todayIso } from "./format";
 import { computeVehicleStats, formatKmPerLiter, formatKm } from "./vehicleStats";
+import { generateLoanReport as generatePDF } from "./reports";
 
 export type AddTransactionArgs = {
   type: TransactionType;
@@ -239,6 +240,43 @@ export const AI_TOOLS: ToolDefinition[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "list_goals",
+      description: "Lista as metas de economia (investimentos) atuais do usuário.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_goal_deposit",
+      description: "Registra um depósito em uma meta de economia específica.",
+      parameters: {
+        type: "object",
+        properties: {
+          goalTitle: { type: "string", description: "Título ou parte do título da meta" },
+          amount: { type: "number", description: "Valor a ser guardado/investido" },
+        },
+        required: ["goalTitle", "amount"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "generate_loan_report",
+      description: "Gera e compartilha um arquivo PDF com o extrato detalhado de um empréstimo.",
+      parameters: {
+        type: "object",
+        properties: {
+          loanDescription: { type: "string", description: "Descrição do empréstimo para gerar o PDF" },
+        },
+        required: ["loanDescription"],
+      },
+    },
+  },
 ];
 
 export type ToolHandlers = {
@@ -282,6 +320,9 @@ export type ToolHandlers = {
     date?: string;
   }) => Promise<{ ok: boolean; oilChange?: any; error?: string }>;
   getVehicleStats: (args: { vehicleName: string }) => Promise<{ stats: any }>;
+  listGoals: () => Promise<{ goals: any[] }>;
+  addGoalDeposit: (args: { goalTitle: string; amount: number }) => Promise<{ ok: boolean; goal?: any; error?: string }>;
+  generateLoanReport: (args: { loanDescription: string }) => Promise<{ ok: boolean; error?: string }>;
 };
 
 function findCategory(categories: Category[], name: string, type: TransactionType): Category | undefined {
@@ -311,6 +352,9 @@ export function buildToolHandlers(deps: {
   oilChanges: any[];
   addFueling: (f: any) => Promise<any>;
   addOilChange: (o: any) => Promise<any>;
+  goals: any[];
+  goalDeposits: any[];
+  addGoalDeposit: (d: any) => Promise<any>;
 }): ToolHandlers {
   return {
     async addTransaction(args) {
@@ -608,19 +652,77 @@ export function buildToolHandlers(deps: {
         },
       };
     },
+    async listGoals() {
+      const list = deps.goals.map((g) => {
+        const deposits = deps.goalDeposits.filter((d) => d.goalId === g.id);
+        const saved = deposits.reduce((s, d) => s + d.amount, 0);
+        return {
+          id: g.id,
+          title: g.title,
+          targetAmount: g.targetAmount,
+          savedAmount: saved,
+          progress: (saved / g.targetAmount) * 100,
+        };
+      });
+      return { goals: list };
+    },
+    async addGoalDeposit(args) {
+      const goal = deps.goals.find((g) =>
+        g.title.toLowerCase().includes(args.goalTitle.toLowerCase())
+      );
+      if (!goal) return { ok: false, error: "Meta não encontrada." };
+
+      const deposit = await deps.addGoalDeposit({
+        goalId: goal.id,
+        amount: args.amount,
+        date: new Date().toISOString(),
+        description: "Depósito via IA",
+      });
+      return { ok: true, goal: { title: goal.title }, deposit };
+    },
+    async generateLoanReport(args) {
+      const loan = deps.loans.find((l) =>
+        l.description.toLowerCase().includes(args.loanDescription.toLowerCase())
+      );
+      if (!loan) return { ok: false, error: "Empréstimo não encontrado." };
+
+      const contact = deps.loanContacts.find((c) => c.id === loan.contactId);
+      if (!contact) return { ok: false, error: "Contato não encontrado." };
+
+      const payments = deps.loanPayments.filter((p) => p.loanId === loan.id);
+
+      try {
+        await generatePDF(loan, contact, payments);
+        return { ok: true };
+      } catch (err) {
+        return { ok: false, error: "Erro ao gerar PDF" };
+      }
+    },
   };
 }
 
-export const SYSTEM_PROMPT = `Você é o Finn, assistente do Bolso, um app brasileiro de controle financeiro. Você é inteligente, sarcástico e prestativo. Seu papel é ajudar o usuário a gerenciar finanças com precisão e perspicácia.
+export const SYSTEM_PROMPT = `Você é o Finn, o cérebro financeiro do app Bolso. Você é inteligente, assertivo e tem um toque de sarcasmo refinado. Sua missão é manter o usuário no caminho da riqueza, sendo um mentor e não apenas um registrador de dados.
 
-Diretrizes:
-- Sempre responda em português do Brasil.
-- **Análise de Viabilidade**: Se o usuário perguntar se "pode comprar algo", analise o saldo atual e considere as despesas fixas (recorrências) que ainda vão vencer no mês antes de dar um veredito. Seja sincero sobre o risco financeiro.
-- **Insights Proativos**: Ao registrar gastos, se notar padrões exagerados (ex: muitos lanches na semana), faça um comentário breve e perspicaz sobre economia.
-- **Precisão**: Use as ferramentas para consultar dados reais. Não invente números.
-- Quando o usuário descrever um gasto ou entrada (ex: "gastei 30 no almoço"), use add_transaction imediatamente.
-- Para pagamentos de empréstimos, use add_loan_payment.
-- Para veículos, use add_fueling, add_oil_change ou get_vehicle_stats.
-- Valores em reais (R$). Formate como "R$ 45,90".
-- Seja breve e natural. Não use emojis.
-- Se for tema fora de finanças, converse normalmente como um assistente útil.`;
+Diretrizes de Personalidade:
+- Responda sempre em Português do Brasil.
+- **Feedback Inteligente**: Não dê sermão por cada gasto pequeno. Comente apenas se:
+    1. O usuário gastar mais de R$ 200,00 em uma categoria não-essencial no mês.
+    2. O saldo atual estiver baixo em relação às despesas fixas (recorrências).
+    3. For um gasto que claramente foge do padrão habitual dele.
+- **Proatividade em Investimentos**: Se o usuário disser que "guardou", "poupou" ou "investiu" um valor:
+    1. Use list_goals para ver as metas atuais.
+    2. Se houver metas, pergunte em qual ele deseja depositar ou se quer criar uma nova.
+    3. Nunca assuma a meta sozinho se houver mais de uma.
+- **Precisão em Veículos**: Antes de registrar abastecimento ou troca de óleo, use list_vehicles. Se houver mais de um veículo, pergunte explicitamente para qual deles é o registro.
+- **Domínio de Empréstimos**: 
+    1. Você pode consultar quanto alguém deve usando list_loans.
+    2. Pode registrar pagamentos com add_loan_payment.
+    3. Se o usuário pedir um "extrato" ou "acerto" de um empréstimo, use generate_loan_report.
+- **Estilo de Escrita**: Seja breve, direto e use um tom de "parceiro de negócios". Evite emojis em excesso.
+- **Fluxo de Trabalho**: 
+    - Para gastos comuns: add_transaction.
+    - Para investimentos: list_goals -> add_goal_deposit.
+    - Para dúvidas de saldo: get_summary.
+    - Para planejar compras: Analise o summary + recurring antes de opinar.
+
+Lembre-se: Você é o Finn. Você quer que o usuário fique rico.`;
