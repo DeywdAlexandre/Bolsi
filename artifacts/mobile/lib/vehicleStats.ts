@@ -34,12 +34,22 @@ export function computeVehicleStats(
   allOilChanges: OilChange[],
   allExtraExpenses: VehicleExpense[],
 ): VehicleStats {
-  const fuelings = sortByDateAsc(
-    allFuelings.filter((f) => f.vehicleId === vehicle.id),
-  );
-  const oilChanges = sortByDateAsc(
-    allOilChanges.filter((o) => o.vehicleId === vehicle.id),
-  );
+  const fuelings = [...allFuelings]
+    .filter((f) => f.vehicleId === vehicle.id)
+    .sort((a, b) => {
+      const dateCompare = a.date.localeCompare(b.date);
+      if (dateCompare !== 0) return dateCompare;
+      return a.odometer - b.odometer;
+    });
+
+  const oilChanges = [...allOilChanges]
+    .filter((o) => o.vehicleId === vehicle.id)
+    .sort((a, b) => {
+      const dateCompare = a.date.localeCompare(b.date);
+      if (dateCompare !== 0) return dateCompare;
+      return a.odometer - b.odometer;
+    });
+
   const extraExpenses = allExtraExpenses.filter((e) => e.vehicleId === vehicle.id);
 
   const lastFueling = fuelings.length ? fuelings[fuelings.length - 1]! : null;
