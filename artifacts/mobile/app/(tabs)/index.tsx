@@ -24,7 +24,7 @@ import { formatCurrency } from "@/lib/format";
 export default function DashboardScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { transactions, categories, recurring, goals, userName, ready } = useAppData();
+  const { transactions, categories, recurring, goals, userName, ready, applyRecurring } = useAppData();
   
   const scrollY = React.useRef(new Animated.Value(0)).current;
 
@@ -75,11 +75,19 @@ export default function DashboardScreen() {
   }, [goals]);
 
   const upcoming = useMemo(() => {
-    const today = new Date().getDate();
+    const now = new Date();
+    const month = now.getMonth();
+    const year = now.getFullYear();
+    
     return recurring
-      .filter((r) => r.active && r.dayOfMonth >= today)
+      .filter((r) => {
+        if (!r.active) return false;
+        const last = r.lastApplied ? new Date(r.lastApplied) : null;
+        const alreadyApplied = last && last.getMonth() === month && last.getFullYear() === year;
+        return !alreadyApplied;
+      })
       .sort((a, b) => a.dayOfMonth - b.dayOfMonth)
-      .slice(0, 3);
+      .slice(0, 5);
   }, [recurring]);
 
   const recent = useMemo(() => {
@@ -253,30 +261,48 @@ export default function DashboardScreen() {
             <View style={[styles.cardWrap, { backgroundColor: colors.card, borderColor: colors.border, paddingVertical: 10 }]}>
               {upcoming.map((r, idx) => {
                 const cat = categories.find((c) => c.id === r.categoryId);
+                const isLate = r.dayOfMonth < new Date().getDate();
                 return (
                   <View key={`up-${r.id}`}>
-                    <Pressable 
-                      onPress={() => router.push({ pathname: "/recurring/[id]", params: { id: r.id } })}
-                      style={styles.upcomingItem}
-                    >
-                      <View style={[styles.dayBadge, { backgroundColor: colors.primary + "15" }]}>
-                        <Text style={[styles.dayText, { color: colors.primary }]}>{r.dayOfMonth}</Text>
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                          <Text style={[styles.upcomingDesc, { color: colors.foreground }]}>{r.description || cat?.name}</Text>
-                          {r.isSubscription && (
-                            <View style={[styles.assinBadge, { backgroundColor: colors.primary + "15" }]}>
-                              <Text style={[styles.assinBadgeText, { color: colors.primary }]}>ASSIN</Text>
-                            </View>
-                          )}
+                    <View style={styles.upcomingItem}>
+                      <Pressable 
+                        onPress={() => router.push({ pathname: "/recurring/[id]", params: { id: r.id } })}
+                        style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 12 }}
+                      >
+                        <View style={[styles.dayBadge, { backgroundColor: isLate ? colors.expense + "15" : colors.primary + "15" }]}>
+                          <Text style={[styles.dayText, { color: isLate ? colors.expense : colors.primary }]}>{r.dayOfMonth}</Text>
                         </View>
-                        <Text style={[styles.upcomingCat, { color: colors.mutedForeground }]}>{cat?.name}</Text>
-                      </View>
-                      <Text style={[styles.upcomingAmount, { color: r.type === "income" ? colors.income : colors.foreground }]}>
-                        {formatCurrency(r.amount)}
-                      </Text>
-                    </Pressable>
+                        <View style={{ flex: 1 }}>
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                            <Text style={[styles.upcomingDesc, { color: colors.foreground }]}>{r.description || cat?.name}</Text>
+                            {isLate && (
+                              <View style={[styles.lateBadge, { backgroundColor: colors.expense + "15" }]}>
+                                <Text style={[styles.lateBadgeText, { color: colors.expense }]}>ATRASADO</Text>
+                              </View>
+                            )}
+                            {r.isSubscription && (
+                              <View style={[styles.assinBadge, { backgroundColor: colors.primary + "15" }]}>
+                                <Text style={[styles.assinBadgeText, { color: colors.primary }]}>ASSIN</Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text style={[styles.upcomingCat, { color: colors.mutedForeground }]}>{cat?.name}</Text>
+                        </View>
+                        <Text style={[styles.upcomingAmount, { color: r.type === "income" ? colors.income : colors.foreground }]}>
+                          {formatCurrency(r.amount)}
+                        </Text>
+                      </Pressable>
+                      
+                      <Pressable
+                        onPress={() => void applyRecurring(r.id)}
+                        style={({ pressed }) => [
+                          styles.confirmBtn,
+                          { backgroundColor: colors.primary, opacity: pressed ? 0.7 : 1 }
+                        ]}
+                      >
+                        <Feather name="check" size={16} color={colors.primaryForeground} />
+                      </Pressable>
+                    </View>
                     {idx < upcoming.length - 1 && <View style={[styles.divider, { backgroundColor: colors.border, marginVertical: 8 }]} />}
                   </View>
                 );
@@ -521,6 +547,22 @@ const styles = StyleSheet.create({
   assinBadgeText: {
     fontSize: 8,
     fontFamily: "Inter_700Bold",
+  },
+  lateBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  lateBadgeText: {
+    fontSize: 8,
+    fontFamily: "Inter_800ExtraBold",
+  },
+  confirmBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
   },
   scroll: {
     paddingHorizontal: 20,

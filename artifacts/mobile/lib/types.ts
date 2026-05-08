@@ -108,7 +108,7 @@ export type Vehicle = {
   createdAt: string;
 };
 
-export type TankStatus = "full" | "reserve";
+export type TankStatus = "full" | "reserve" | "partial";
 
 export type Fueling = {
   id: string;

@@ -212,6 +212,7 @@ export const AI_TOOLS: ToolDefinition[] = [
           liters: { type: "number", description: "Quantidade de litros abastecidos" },
           odometer: { type: "number", description: "Quilometragem atual (odômetro) do veículo" },
           date: { type: "string", description: "Opcional: Data ISO (YYYY-MM-DD). Padrão é hoje." },
+          tankStatus: { type: "string", enum: ["full", "reserve", "partial"], description: "Estado do tanque ao chegar no posto. Use 'full' se encheu, 'reserve' se estava na reserva, ou 'partial' se foi um abastecimento comum (padrão)." },
         },
         required: ["vehicleName", "amount", "liters", "odometer"],
       },
@@ -643,7 +644,7 @@ export function buildToolHandlers(deps: {
         odometer: args.odometer,
         date: args.date || new Date().toISOString(),
         totalCost: args.amount,
-        tankStatus: "full", // Padrão IA assume tanque cheio para cálculo de consumo
+        tankStatus: args.tankStatus || "partial", // Se não disse que encheu ou reserva, assume parcial
       });
 
       return { ok: true, fueling };
@@ -759,7 +760,7 @@ Diretrizes de Personalidade:
     1. Use list_goals para ver as metas atuais.
     2. Se houver metas, pergunte em qual ele deseja depositar ou se quer criar uma nova.
     3. Nunca assuma a meta sozinho se houver mais de uma.
-- **Precisão em Veículos**: Antes de registrar abastecimento ou troca de óleo, use list_vehicles. Se houver mais de um veículo, pergunte explicitamente para qual deles é o registro.
+- **Precisão em Veículos**: Antes de registrar abastecimento ou troca de óleo, use list_vehicles. Se houver mais de um veículo, pergunte explicitamente para qual deles é o registro. Ao registrar abastecimento, identifique se o usuário "encheu o tanque" (full) ou se "entrou na reserva" (reserve). Se for apenas um valor comum, use "partial". Se estiver em dúvida, assuma "partial".
 - **Domínio de Empréstimos**: 
     1. Você pode consultar quanto alguém deve usando list_loans.
     2. Pode registrar pagamentos com add_loan_payment.

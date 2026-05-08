@@ -301,8 +301,16 @@ export default function FuelingFormScreen() {
 
         <Field label="Estado do tanque">
           <View style={[styles.toggle, { backgroundColor: colors.muted }]}>
-            {(["full", "reserve"] as TankStatus[]).map((s) => {
+            {(["full", "partial", "reserve"] as TankStatus[]).map((s) => {
               const active = tankStatus === s;
+              let icon: keyof typeof Feather.glyphMap = "droplet";
+              let color = colors.primary;
+              if (s === "full") icon = "battery-charging";
+              if (s === "reserve") {
+                icon = "battery";
+                color = colors.accent;
+              }
+
               return (
                 <Pressable
                   key={s}
@@ -315,35 +323,25 @@ export default function FuelingFormScreen() {
                   ]}
                 >
                   <Feather
-                    name={s === "full" ? "battery-charging" : "battery"}
+                    name={icon}
                     size={14}
-                    color={
-                      active
-                        ? s === "full"
-                          ? colors.primary
-                          : colors.accent
-                        : colors.mutedForeground
-                    }
+                    color={active ? color : colors.mutedForeground}
                   />
                   <Text
                     style={{
-                      color: active
-                        ? s === "full"
-                          ? colors.primary
-                          : colors.accent
-                        : colors.mutedForeground,
+                      color: active ? color : colors.mutedForeground,
                       fontFamily: active ? "Inter_700Bold" : "Inter_500Medium",
                       fontSize: 13,
                     }}
                   >
-                    {s === "full" ? "Cheio" : "Reserva"}
+                    {s === "full" ? "Cheio" : s === "partial" ? "Parcial" : "Reserva"}
                   </Text>
                 </Pressable>
               );
             })}
           </View>
           <Text style={{ color: colors.mutedForeground, fontSize: 11, fontFamily: "Inter_500Medium" }}>
-            Marque como na chegada ao posto. Cheio→cheio ou reserva→reserva são usados pra calcular KM/L.
+            Marque como chegou no posto. O consumo é medido entre dois pontos iguais (Cheio→Cheio ou Reserva→Reserva). Abastecimentos parciais são somados no meio do caminho.
           </Text>
         </Field>
 

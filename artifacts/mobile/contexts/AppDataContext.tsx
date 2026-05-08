@@ -45,6 +45,7 @@ type AppDataContextValue = {
   addRecurringRaw: (r: Recurring) => Promise<void>;
   updateRecurring: (id: string, patch: Partial<Recurring>) => Promise<void>;
   removeRecurring: (id: string) => Promise<void>;
+  applyRecurring: (id: string) => Promise<void>;
   addCategory: (input: Omit<Category, "id">) => Promise<Category>;
   removeCategory: (id: string) => Promise<void>;
   addVehicle: (input: Omit<Vehicle, "id" | "createdAt">) => Promise<Vehicle>;
@@ -149,48 +150,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Recurring transactions logic
-  useEffect(() => {
-    if (!ready) return;
-    const now = new Date();
-    const month = now.getMonth();
-    const year = now.getFullYear();
-    const today = now.getDate();
+  // Automatic recurring transactions logic removed as per user request
+  // (Manual application only via applyRecurring)
 
-    let changed = false;
-    const newTx: Transaction[] = [];
-    const updatedRecurring = recurring.map((r) => {
-      if (!r.active) return r;
-      if (r.dayOfMonth > today) return r;
-      const targetDay = Math.min(r.dayOfMonth, new Date(year, month + 1, 0).getDate());
-      const targetDate = new Date(year, month, targetDay, 12, 0, 0);
-      const lastApplied = r.lastApplied ? new Date(r.lastApplied) : null;
-      const alreadyApplied =
-        lastApplied &&
-        lastApplied.getMonth() === month &&
-        lastApplied.getFullYear() === year;
-      if (alreadyApplied) return r;
-      newTx.push({
-        id: genId(),
-        type: r.type,
-        amount: r.amount,
-        categoryId: r.categoryId,
-        description: r.description,
-        date: targetDate.toISOString(),
-        recurringId: r.id,
-        createdAt: new Date().toISOString(),
-      });
-      changed = true;
-      return { ...r, lastApplied: targetDate.toISOString() };
-    });
-    if (changed) {
-      const allTx = [...newTx, ...transactions];
-      setTransactions(allTx);
-      setRecurring(updatedRecurring);
-      void saveJson(STORAGE_KEYS.transactions, allTx);
-      void saveJson(STORAGE_KEYS.recurring, updatedRecurring);
-    }
-  }, [ready]);
 
   // GOALS AUTOMATIC INTEREST LOGIC
   useEffect(() => {
@@ -379,6 +341,48 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       const next = prev.filter((r) => r.id !== id);
       void saveJson(STORAGE_KEYS.recurring, next);
       return next;
+    });
+  }, []);
+
+  const applyRecurring = useCallback(async (id: string) => {
+    setRecurring((prevRec) => {
+      const r = prevRec.find((x) => x.id === id);
+      if (!r) return prevRec;
+
+      const now = new Date();
+      const month = now.getMonth();
+      const year = now.getFullYear();
+      const targetDay = Math.min(r.dayOfMonth, new Date(year, month + 1, 0).getDate());
+      const targetDate = new Date(year, month, targetDay, 12, 0, 0);
+
+      // Avoid double apply for same month/year
+      const lastApplied = r.lastApplied ? new Date(r.lastApplied) : null;
+      if (lastApplied && lastApplied.getMonth() === month && lastApplied.getFullYear() === year) {
+        return prevRec;
+      }
+
+      const tx: Transaction = {
+        id: genId(),
+        type: r.type,
+        amount: r.amount,
+        categoryId: r.categoryId,
+        description: r.description,
+        date: targetDate.toISOString(),
+        recurringId: r.id,
+        createdAt: new Date().toISOString(),
+      };
+
+      setTransactions((prevTx) => {
+        const nextTx = [tx, ...prevTx];
+        void saveJson(STORAGE_KEYS.transactions, nextTx);
+        return nextTx;
+      });
+
+      const nextRec = prevRec.map((item) =>
+        item.id === id ? { ...item, lastApplied: targetDate.toISOString() } : item
+      );
+      void saveJson(STORAGE_KEYS.recurring, nextRec);
+      return nextRec;
     });
   }, []);
 
@@ -816,6 +820,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       addRecurringRaw,
       updateRecurring,
       removeRecurring,
+      applyRecurring,
       addCategory,
       removeCategory,
       addVehicle,

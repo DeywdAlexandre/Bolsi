@@ -362,7 +362,7 @@ export default function VehicleDetailScreen() {
                   >
                     {formatDate(entry.data.date)}
                     {entry.kind === "fueling"
-                      ? ` · ${entry.data.tankStatus === "full" ? "tanque cheio" : "reserva"}`
+                      ? ` · ${entry.data.tankStatus === "full" ? "tanque cheio" : entry.data.tankStatus === "partial" ? "parcial" : "reserva"}`
                       : ` · próx. em ${formatKm(entry.data.nextChangeKm)} km`}
                   </Text>
                 </View>

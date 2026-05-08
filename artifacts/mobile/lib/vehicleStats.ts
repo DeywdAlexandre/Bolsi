@@ -54,35 +54,63 @@ export function computeVehicleStats(
   const totalSpentAllTime = totalSpentFuel + totalSpentOil + totalExtraExpenses;
   const totalLitersAllTime = fuelings.reduce((s, f) => s + f.liters, 0);
 
-  // segments between consecutive fuelings with the same tank status
+  // segments between consecutive fuelings with the same tank status (anchors)
   let totalKm = 0;
   let totalLitersInSegments = 0;
   let totalCostInSegments = 0;
   const segments: { km: number; liters: number; cost: number }[] = [];
-  for (let i = 1; i < fuelings.length; i++) {
-    const prev = fuelings[i - 1]!;
-    const curr = fuelings[i]!;
-    if (prev.tankStatus !== curr.tankStatus) continue;
-    const km = curr.odometer - prev.odometer;
-    if (km <= 0 || curr.liters <= 0) continue;
-    segments.push({ km, liters: curr.liters, cost: curr.totalCost });
-    totalKm += km;
-    totalLitersInSegments += curr.liters;
-    totalCostInSegments += curr.totalCost;
+
+  let anchorIndex = -1;
+  for (let i = 0; i < fuelings.length; i++) {
+    const f = fuelings[i];
+    if (f.tankStatus === "partial") continue;
+
+    if (anchorIndex === -1) {
+      anchorIndex = i;
+      continue;
+    }
+
+    const start = fuelings[anchorIndex]!;
+    const end = f;
+
+    if (start.tankStatus === end.tankStatus) {
+      const km = end.odometer - start.odometer;
+      if (km > 0) {
+        let liters = 0;
+        let cost = 0;
+
+        if (end.tankStatus === "full") {
+          // Full-to-Full: sum all liters from the one AFTER the start until the end
+          for (let j = anchorIndex + 1; j <= i; j++) {
+            liters += fuelings[j]!.liters;
+            cost += fuelings[j]!.totalCost;
+          }
+        } else {
+          // Reserve-to-Reserve: sum all liters from the start until the one BEFORE the end
+          for (let j = anchorIndex; j < i; j++) {
+            liters += fuelings[j]!.liters;
+            cost += fuelings[j]!.totalCost;
+          }
+        }
+
+        if (liters > 0) {
+          totalKm += km;
+          totalLitersInSegments += liters;
+          totalCostInSegments += cost;
+          segments.push({ km, liters, cost });
+        }
+      }
+      anchorIndex = i;
+    } else {
+      // Mixed anchor types (Full -> Reserve or vice versa)
+      // Reset anchor to the latest known state
+      anchorIndex = i;
+    }
   }
-
-  // Custo por KM levando em conta tudo o que foi gasto (não apenas combustivel)
-  // Se medimos uma certa quilometragem, queremos saber quanto custou rodar aquilo no total.
-  // Usamos totalCostInSegments para a parte de combustível e proporcionalizamos o resto ou simplesmente usamos o total geral pelo km total medido.
-  // Para ser mais simples e preciso: (Gastos Totais / KM Total percorrido desde o inicio)
-  const measuredKm = fuelings.length >= 2 
-    ? (fuelings[fuelings.length - 1]!.odometer - fuelings[0]!.odometer)
-    : 0;
-
-  const avgCostPerKm = measuredKm > 0 ? (totalSpentAllTime / measuredKm) : (totalKm > 0 ? totalCostInSegments / totalKm : null);
 
   const hasComputedKmL = totalLitersInSegments > 0;
   const avgKmPerLiter = hasComputedKmL ? totalKm / totalLitersInSegments : null;
+  const avgCostPerKm = totalKm > 0 ? totalCostInSegments / totalKm : null;
   const recentSegment = segments[segments.length - 1] ?? null;
   const recentKmPerLiter = recentSegment
     ? recentSegment.km / recentSegment.liters

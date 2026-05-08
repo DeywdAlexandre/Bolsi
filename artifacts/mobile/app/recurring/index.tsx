@@ -13,7 +13,7 @@ import { formatCurrency } from "@/lib/format";
 export default function RecurringScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { recurring, categories, updateRecurring } = useAppData();
+  const { recurring, categories, updateRecurring, applyRecurring } = useAppData();
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
@@ -71,6 +71,7 @@ export default function RecurringScreen() {
                     recurring={r}
                     category={categories.find((c) => c.id === r.categoryId)}
                     onToggle={(active) => void updateRecurring(r.id, { active })}
+                    onApply={() => void applyRecurring(r.id)}
                     onPress={() =>
                       router.push({ pathname: "/recurring/[id]", params: { id: r.id } })
                     }
@@ -86,6 +87,7 @@ export default function RecurringScreen() {
                     recurring={r}
                     category={categories.find((c) => c.id === r.categoryId)}
                     onToggle={(active) => void updateRecurring(r.id, { active })}
+                    onApply={() => void applyRecurring(r.id)}
                     onPress={() =>
                       router.push({ pathname: "/recurring/[id]", params: { id: r.id } })
                     }
@@ -116,15 +118,24 @@ function RecurringRow({
   recurring,
   category,
   onToggle,
+  onApply,
   onPress,
 }: {
   recurring: import("@/lib/types").Recurring;
   category: import("@/lib/types").Category | undefined;
   onToggle: (active: boolean) => void;
+  onApply: () => void;
   onPress: () => void;
 }) {
   const colors = useColors();
-  const isIncome = recurring.type === "income";
+      const isIncome = recurring.type === "income";
+  const now = new Date();
+  const month = now.getMonth();
+  const year = now.getFullYear();
+  const last = recurring.lastApplied ? new Date(recurring.lastApplied) : null;
+  const isPaidThisMonth = last && last.getMonth() === month && last.getFullYear() === year;
+  const isLate = !isPaidThisMonth && recurring.dayOfMonth < now.getDate();
+
   return (
     <Pressable
       onPress={onPress}
@@ -146,30 +157,54 @@ function RecurringRow({
             </View>
           )}
         </View>
-        <Text style={[styles.rowSub, { color: colors.mutedForeground }]} numberOfLines={1}>
-          Todo dia {recurring.dayOfMonth} · {category?.name ?? "—"}
-        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Text style={[styles.rowSub, { color: isLate ? colors.expense : colors.mutedForeground }]} numberOfLines={1}>
+            Todo dia {recurring.dayOfMonth}
+          </Text>
+          {isPaidThisMonth ? (
+            <View style={[styles.statusBadge, { backgroundColor: colors.income + "15" }]}>
+              <Text style={[styles.statusBadgeText, { color: colors.income }]}>PAGO</Text>
+            </View>
+          ) : isLate ? (
+            <View style={[styles.statusBadge, { backgroundColor: colors.expense + "15" }]}>
+              <Text style={[styles.statusBadgeText, { color: colors.expense }]}>ATRASADO</Text>
+            </View>
+          ) : null}
+        </View>
       </View>
       <View style={styles.rowRight}>
-        <Text
-          style={[
-            styles.rowAmount,
-            { color: isIncome ? colors.income : colors.foreground },
-          ]}
-        >
-          {isIncome ? "+" : "-"} {formatCurrency(recurring.amount)}
-        </Text>
-        {recurring.isSubscription && (
-          <Text style={[styles.annualCost, { color: colors.mutedForeground }]}>
-            {formatCurrency(recurring.amount * 12)}/ano
-          </Text>
-        )}
-        <Switch
-          value={recurring.active}
-          onValueChange={onToggle}
-          trackColor={{ true: colors.primary, false: colors.border }}
-          thumbColor={Platform.OS === "android" ? colors.background : undefined}
-        />
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <View style={{ alignItems: "flex-end" }}>
+            <Text
+              style={[
+                styles.rowAmount,
+                { color: isIncome ? colors.income : colors.foreground },
+              ]}
+            >
+              {isIncome ? "+" : "-"} {formatCurrency(recurring.amount)}
+            </Text>
+            {recurring.active && !isPaidThisMonth && (
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation();
+                  onApply();
+                }}
+                style={({ pressed }) => [
+                  styles.confirmBtnSmall,
+                  { backgroundColor: colors.primary, opacity: pressed ? 0.7 : 1 },
+                ]}
+              >
+                <Text style={styles.confirmBtnText}>Efetivar</Text>
+              </Pressable>
+            )}
+          </View>
+          <Switch
+            value={recurring.active}
+            onValueChange={onToggle}
+            trackColor={{ true: colors.primary, false: colors.border }}
+            thumbColor={Platform.OS === "android" ? colors.background : undefined}
+          />
+        </View>
       </View>
     </Pressable>
   );
@@ -269,5 +304,25 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontFamily: "Inter_500Medium",
     marginTop: -2,
+  },
+  statusBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  statusBadgeText: {
+    fontSize: 9,
+    fontFamily: "Inter_800ExtraBold",
+  },
+  confirmBtnSmall: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  confirmBtnText: {
+    color: "#fff",
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
   },
 });
